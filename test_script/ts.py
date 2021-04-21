@@ -21,14 +21,17 @@ def listener():
 def main():
 	global start_joint
 	rospy.init_node('jogging_node', anonymous=True)
-	pub = rospy.Publisher('/position_trajectory_controller/follow_joint_trajectory/goal', FollowJointTrajectoryActionGoal, queue_size=1)
-
+	client = actionlib.SimpleActionClient('/position_trajectory_controller/follow_joint_trajectory/goal', FollowJointTrajectoryActionGoal)
+	client.wait_for_server()
 
 	listener()
 	joint_names=['joint_6']
 	
 	Tj=JointTrajectory()	
 	Tj.joint_names=joint_names
+
+	
+
 
 	length=500
 	for i in range(length):
@@ -45,7 +48,8 @@ def main():
 
 
 	
-	pub.publish(FJTAG)
+	client.send_goal(FJTAG)
+	client.wait_for_result(rospy.Duration.from_sec(2.0))
 
 
 if __name__ == '__main__':
