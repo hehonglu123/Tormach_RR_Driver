@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import rospy, time, copy, traceback
+import actionlib
+
 import numpy as np
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
