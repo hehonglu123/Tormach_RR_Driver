@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys
+import rospy, actionlib, time, copy, sys
 import numpy as np
 from sensor_msgs.msg import JointState
 from robot_jog_msgs.srv import *
 from robot_jog_msgs.msg import *
+from sensor_msgs.msg import JointState
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
 import matplotlib.pyplot as plt
 
 
@@ -22,6 +25,11 @@ def main():
 	rospy.init_node('jogging_node', anonymous=True)
 
 	rospy.Subscriber("/joint_states", JointState, callback)
+	pub_t = rospy.Publisher(
+			'/position_trajectory_controller/command',
+			JointTrajectory,
+			queue_size=1,
+		)
 	#publisher for jogexecute
 	JE=JogExecute()
 	JE.execute=True
@@ -42,7 +50,7 @@ def main():
 	 
 	
 	#wait for first jp arrives
-	time.sleep(2)
+	time.sleep(1)
 	pub = rospy.Publisher('/jog/execute', JogExecute, queue_size=1)
 	rate = rospy.Rate(10) # 10hz
 	#jog to 0
@@ -51,14 +59,32 @@ def main():
 		rtval=srv(joint_names,[0.])
 		rate.sleep()
 
-	#jog sin
-	now=time.time()
-	while time.time()-now<20.:
-		pub.publish(JE)
-		rtval=srv(joint_names,[np.sin(time.time()-now)])
+
+	#traj sin
+	Tj = JointTrajectory()
+	Tj.joint_names = ['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6',]
+	rate = rospy.Rate(500)  # 10hz
+	now = time.time()
+	last_pos = joint_positions[5]
+	while time.time() - now < 20.0:
+		Tj.header.stamp = rospy.Time()
+		Tjp = JointTrajectoryPoint()
+		Tjp.positions = joint_positions
+		Tjp.positions[5] = np.sin(time.time()-now)
+		vel = (Tjp.positions[5] - last_pos) * rate.sleep_dur.to_sec()
+		last_pos = Tjp.positions[5]
+		Tjp.velocities = [0.0] * 6
+		Tjp.velocities[5] = vel
+		# print(Tjp.positions)
+		Tjp.time_from_start = rospy.Duration()
+		Tjp.time_from_start.nsecs = 1
+		Tj.points = [Tjp]
+
+		pub_t.publish(Tj)
 		rate.sleep()
 
 	plt.plot(joint_positions_history)
+	plt.title('jog+traj')
 	plt.show()
 	sys.exit()
 	rospy.spin()
