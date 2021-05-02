@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys
+import rospy, time, copy, sys, threading, signal
 import numpy as np
 
 #ROS libs
@@ -46,17 +46,19 @@ class Tormach(object):
 			queue_size=1,
 		)
 		self.Tj = JointTrajectory()
-		Tj.joint_names=self.joint_names
+		self.Tj.joint_names=self.joint_names
 		self.position_rate = rospy.Rate(500)
 		#RR
 		self._lock=threading.Lock()
 		self._running=False
 		self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
-		self.robot_command_mode_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotCommandMode")
-		self.position_command.InValueLifespan=0.5
+		# self.position_command.InValueLifespan=0.5
 		self.command_seqno=0	
 		self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
-
+		#required?
+		self.tool_changed=RR.EventHook()
+		self.payload_changed=RR.EventHook()
+		self.param_changed=RR.EventHook()
 
 	def _joint_callback(self,data):
 		self.joint_positions=list(data.position)
@@ -118,9 +120,8 @@ class Tormach(object):
 
 with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 
-	RRC. RegisterStdRobDefServiceTypes(RRN)
-	RRN.RegisterServiceTypeFromFile('com.robotraconteur.robotics.robot.robdef')
-
+	RRC.RegisterStdRobDefServiceTypes(RRN)
+	time.sleep(5)
 	tormach_inst=Tormach()
 	tormach_inst.start()
 
