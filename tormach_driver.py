@@ -128,7 +128,7 @@ with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 	tormach_inst=Tormach()
 	
 
-	RRN.RegisterService("tormach", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
+	RRN.RegisterService("tormach_robot", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
 	time.sleep(3)
 	print('registered')
 	tormach_inst.start()
