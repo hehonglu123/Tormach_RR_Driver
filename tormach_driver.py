@@ -53,8 +53,10 @@ class Tormach(object):
 		self._running=False
 		self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
 		self.robot_command_mode_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotCommandMode")
-		self.command_mode=None	
+		self.position_command.InValueLifespan=0.5
 		self.command_seqno=0	
+		self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
+
 
 	def _joint_callback(self,data):
 		self.joint_positions=list(data.position)
@@ -63,7 +65,11 @@ class Tormach(object):
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
 		##TODO enum, writeonly wire invalue
-		while np.linalg.norm(self.joint_position-joint_positions)>0.001 and self.command_mode.InValue==self.robot_command_mode_struct['jog']:
+		command_mode_wire_packet=self.command_mode.TryGetInValue()
+		if (not command_mode_wire_packet[0]):
+			#raise exception
+			return
+		while np.linalg.norm(self.joint_position-joint_positions)>0.001 and command_mode_wire_packet[1]==self.robot_consts['jog']:
 			self.jog_pub.publish(JE)
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
@@ -73,18 +79,23 @@ class Tormach(object):
 		while self._running:
 			with self._lock:
 				##read wire value
-				if self.command_mode.InValue==self.robot_command_mode_struct['position_command'] and self.position_command.InValue.seqno>self.command_seqno:
+				command_mode_wire_packet=self.command_mode.TryGetInValue()
+				position_command_wire_packet=self.position_command.TryGetInValue()
+				if (not command_mode_wire_packet[0]) or (not position_command_wire_packet[0]):
+					#raise exception
+					continue
+				if command_mode_wire_packet[1]==self.robot_consts['position_command'] and position_command_wire_packet[1].seqno>self.command_seqno:
 					#update command_seqno
-					self.command_seqno=self.position_command.InValue.seqno
+					self.command_seqno=position_command_wire_packet[1]
 
-					while np.linalg.norm(self.position_command.InValue.command-self.joint_position)>0.001:
+					while np.linalg.norm(position_command_wire_packet[1]-self.joint_position)>0.001:
 						#break if new value comes in
-						if self.position_command.InValue.seqno>self.command_seqno:
+						if position_command_wire_packet[1].seqno>self.command_seqno:
 							break
 
 						self.Tj.header.stamp = rospy.Time()
 						Tjp = JointTrajectoryPoint()
-						Tjp.positions = self.position_command.InValue.command
+						Tjp.positions = position_command_wire_packet[1].command
 						vel = (Tjp.positions - self.joint_position) * rate.sleep_dur.to_sec()
 						Tjp.velocities = vel
 						Tjp.time_from_start = rospy.Duration()
