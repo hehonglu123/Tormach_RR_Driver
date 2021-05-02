@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys, threading, signal
+import rospy, time, copy, sys, threading, signal, traceback
 import numpy as np
 
 #ROS libs
@@ -18,51 +18,60 @@ from RobotRaconteurCompanion.Util.AttributesUtil import AttributesUtil
 
 class Tormach(object):
 	def __init__(self):
-		#initialize robot parameters
-		self.joint_names=['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
-		#initialize ROS node
-		rospy.init_node('Tormach_RR_Service', anonymous=True)
-		#initialize ROS Sub for joint callback
-		rospy.Subscriber("/joint_states", JointState, self._joint_callback)
+		try:
+			#initialize robot parameters
+			self.joint_names=['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
+			#initialize ROS node
+			rospy.init_node('Tormach_RR_Service', anonymous=True)
+			
 
 
-		#publisher for jogexecute
-		self.JE=JogExecute()
-		self.JE.execute=True
+			#publisher for jogexecute
+			self.JE=JogExecute()
+			self.JE.execute=True
 
-		#initialize jog service
-		rospy.wait_for_service('/jog/absolute/set_joints')
-		self.jog_srv=rospy.ServiceProxy('/jog/absolute/set_joints',SetJoints)
-		#initialize jog publisher
-		time.sleep(2)
-		self.jog_pub = rospy.Publisher('/jog/execute', JogExecute, queue_size=1)
-		self.jog_rate = rospy.Rate(10) # 10hz
+			#initialize jog service
+			rospy.wait_for_service('/jog/absolute/set_joints')
+			self.jog_srv=rospy.ServiceProxy('/jog/absolute/set_joints',SetJoints)
+			#initialize jog publisher
+			time.sleep(2)
+			self.jog_pub = rospy.Publisher('/jog/execute', JogExecute, queue_size=1)
+			self.jog_rate = rospy.Rate(10) # 10hz
 
-		#position command param
-		#ROS
-		self.traj_pub = rospy.Publisher(
-			'/position_trajectory_controller/command',
-			JointTrajectory,
-			queue_size=1,
-		)
-		self.Tj = JointTrajectory()
-		self.Tj.joint_names=self.joint_names
-		self.position_rate = rospy.Rate(500)
-		#RR
-		self._lock=threading.Lock()
-		self._running=False
-		self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
-		# self.position_command.InValueLifespan=0.5
-		self.command_seqno=0	
-		self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
-		#required?
-		self.tool_changed=RR.EventHook()
-		self.payload_changed=RR.EventHook()
-		self.param_changed=RR.EventHook()
+			#position command param
+			#ROS
+			self.traj_pub = rospy.Publisher(
+				'/position_trajectory_controller/command',
+				JointTrajectory,
+				queue_size=1,
+			)
+			self.Tj = JointTrajectory()
+			self.Tj.joint_names=self.joint_names
+			self.position_rate = rospy.Rate(100)
+			#RR
+			self._lock=threading.Lock()
+			self._running=False
+			self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
+			# self.position_command.InValueLifespan=0.5
+			self.command_seqno=0	
+			self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
+			#required?
+			self.tool_changed=RR.EventHook()
+			self.payload_changed=RR.EventHook()
+			self.param_changed=RR.EventHook()
+			# self._date_time_util = DateTimeUtil(RRN)
+			# self._date_time_utc_type = RRN.GetPodDType('com.robotraconteur.datetime.DateTimeUTC')
+			self._date_time_util=RRN.GetNamedArrayDType("com.robotraconteur.datetime.TimeSpec3")
+
+			#initialize ROS Sub for joint callback
+			rospy.Subscriber("/joint_states", JointState, self._joint_callback)
+		except:
+			traceback.print_exc()
 
 	def _joint_callback(self,data):
 		self.joint_positions=list(data.position)
 		self.robot_state_struct.joint_position=self.joint_positions
+		self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
@@ -121,12 +130,14 @@ class Tormach(object):
 with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 
 	RRC.RegisterStdRobDefServiceTypes(RRN)
-	time.sleep(5)
+	
 	tormach_inst=Tormach()
-	tormach_inst.start()
+	
 
 	RRN.RegisterService("tormach", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
-
+	time.sleep(3)
+	print('registered')
+	tormach_inst.start()
 	print("press ctrl+c to quit")
 	rospy.spin()
 	signal.sigwait([signal.SIGTERM,signal.SIGINT])
