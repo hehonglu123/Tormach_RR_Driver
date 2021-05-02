@@ -75,12 +75,7 @@ class Tormach(object):
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
-		##TODO enum, writeonly wire invalue
-		command_mode_wire_packet=self.command_mode.TryGetInValue()
-		if (not command_mode_wire_packet[0]):
-			#raise exception
-			return
-		while np.linalg.norm(self.joint_position-joint_positions)>0.001 and command_mode_wire_packet[1]==self.robot_consts['jog']:
+		while np.linalg.norm(self.joint_position-joint_positions)>0.001 and self.command_mode==self.robot_consts['jog']:
 			self.jog_pub.publish(JE)
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
@@ -90,12 +85,11 @@ class Tormach(object):
 		while self._running:
 			with self._lock:
 				##read wire value
-				command_mode_wire_packet=self.command_mode.TryGetInValue()
 				position_command_wire_packet=self.position_command.TryGetInValue()
-				if (not command_mode_wire_packet[0]) or (not position_command_wire_packet[0]):
+				if (not position_command_wire_packet[0]):
 					#raise exception
 					continue
-				if command_mode_wire_packet[1]==self.robot_consts['position_command'] and position_command_wire_packet[1].seqno>self.command_seqno:
+				if self.command_mode==self.robot_consts['position_command'] and position_command_wire_packet[1].seqno>self.command_seqno:
 					#update command_seqno
 					self.command_seqno=position_command_wire_packet[1]
 
