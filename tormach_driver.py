@@ -69,13 +69,13 @@ class Tormach(object):
 			traceback.print_exc()
 
 	def _joint_callback(self,data):
-		self.joint_positions=list(data.position)
-		self.robot_state_struct.joint_position=self.joint_positions
+		self.joint_position=list(data.position)
+		self.robot_state_struct.joint_position=self.joint_position
 		self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
-		while np.linalg.norm(self.joint_position-joint_positions)>0.001 and self.command_mode==self.robot_consts['jog']:
+		while np.linalg.norm(self.joint_position-joint_position)>0.001 and self.command_mode==self.robot_consts['jog']:
 			self.jog_pub.publish(JE)
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
@@ -129,7 +129,6 @@ with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 	
 
 	RRN.RegisterService("tormach_robot", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
-	time.sleep(3)
 	print('registered')
 	tormach_inst.start()
 	print("press ctrl+c to quit")

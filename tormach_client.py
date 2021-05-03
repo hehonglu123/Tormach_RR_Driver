@@ -2,7 +2,7 @@ from RobotRaconteur.Client import *
 import time
 import numpy as np
 
-c = RRN.ConnectService('rr+tcp://bbb3.local:11111?service=abb_robot')
+c = RRN.ConnectService('rr+tcp://localhost:11111?service=tormach_robot')
 
 
 
