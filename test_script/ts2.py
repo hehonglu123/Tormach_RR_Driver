@@ -66,7 +66,8 @@ def main():
 	rate = rospy.Rate(500)  # 10hz
 	now = time.time()
 	last_pos = joint_positions[5]
-	while time.time() - now < 20.0:
+	while time.time() - now < 10.0:
+		temp_timestamp=time.time()
 		Tj.header.stamp = rospy.Time()
 		Tjp = JointTrajectoryPoint()
 		Tjp.positions = joint_positions
@@ -81,6 +82,7 @@ def main():
 		Tj.points = [Tjp]
 
 		pub_t.publish(Tj)
+		print(time.time()-temp_timestamp)
 		rate.sleep()
 
 	plt.plot(joint_positions_history)

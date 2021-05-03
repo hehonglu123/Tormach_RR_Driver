@@ -75,8 +75,8 @@ class Tormach(object):
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
-		while np.linalg.norm(self.joint_position-joint_position)>0.001 and self.command_mode==self.robot_consts['jog']:
-			self.jog_pub.publish(JE)
+		while np.linalg.norm(self.joint_position-joint_position)>0.001 and self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
+			self.jog_pub.publish(self.JE)
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
 
@@ -89,19 +89,18 @@ class Tormach(object):
 				if (not position_command_wire_packet[0]):
 					#raise exception
 					continue
-				if self.command_mode==self.robot_consts['position_command'] and position_command_wire_packet[1].seqno>self.command_seqno:
+				if self.command_mode==self.robot_consts['RobotCommandMode']['position_command'] and position_command_wire_packet[1].seqno!=self.command_seqno:
 					#update command_seqno
-					self.command_seqno=position_command_wire_packet[1]
-
-					while np.linalg.norm(position_command_wire_packet[1]-self.joint_position)>0.001:
+					self.command_seqno=position_command_wire_packet[1].seqno
+					while np.linalg.norm(position_command_wire_packet[1].command-self.joint_position)>0.001:
 						#break if new value comes in
-						if position_command_wire_packet[1].seqno>self.command_seqno:
+						#position command wire InValue tuple?
+						if self.position_command.InValue[0].seqno!=self.command_seqno:
 							break
-
 						self.Tj.header.stamp = rospy.Time()
 						Tjp = JointTrajectoryPoint()
 						Tjp.positions = position_command_wire_packet[1].command
-						vel = (Tjp.positions - self.joint_position) * rate.sleep_dur.to_sec()
+						vel = (Tjp.positions - self.joint_position) * self.position_rate.sleep_dur.to_sec()
 						Tjp.velocities = vel
 						Tjp.time_from_start = rospy.Duration()
 						Tjp.time_from_start.nsecs = 1
@@ -133,6 +132,6 @@ with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 	tormach_inst.start()
 	print("press ctrl+c to quit")
 	rospy.spin()
-	signal.sigwait([signal.SIGTERM,signal.SIGINT])
+	# signal.sigwait([signal.SIGTERM,signal.SIGINT])
 	
 	tormach_inst.close()
