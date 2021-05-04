@@ -123,10 +123,14 @@ class Tormach(object):
 with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 
 	RRC.RegisterStdRobDefServiceTypes(RRN)
-	
-	tormach_inst=Tormach()
-	
+	info_loader = InfoFileLoader(RRN)
+	multicam_info, multicam_ident_fd = info_loader.LoadInfoFileFromString(yaml.safe_dump(realsense_info_yml["multicamera"]), "com.robotraconteur.imaging.camerainfo.MultiCameraInfo", "device")
 
+
+	tormach_inst=Tormach()
+	with args.realsense_info_file:
+			realsense_info_yml = yaml.safe_load(args.realsense_info_file)
+	
 	RRN.RegisterService("tormach_robot", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
 	print('registered')
 	tormach_inst.start()
