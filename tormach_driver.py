@@ -17,8 +17,11 @@ from RobotRaconteurCompanion.Util.DateTimeUtil import DateTimeUtil
 from RobotRaconteurCompanion.Util.AttributesUtil import AttributesUtil
 
 class Tormach(object):
-	def __init__(self):
+	def __init__(self,robot_info):
 		try:
+			#TODO: 
+			##turn on robot /hal
+			##kinematics info, info loader
 			#initialize robot parameters
 			self.joint_names=['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
 			#initialize ROS node
@@ -119,23 +122,37 @@ class Tormach(object):
 		self._pos_command.join()
 
 
+def main():
 
-with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
+	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
+    parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_robot_default_config.yml',required=True,help="Robot info file (required)")
+    args, _ = parser.parse_known_args()
+    RRC.RegisterStdRobDefServiceTypes(RRN)
 
-	RRC.RegisterStdRobDefServiceTypes(RRN)
-	info_loader = InfoFileLoader(RRN)
-	multicam_info, multicam_ident_fd = info_loader.LoadInfoFileFromString(yaml.safe_dump(realsense_info_yml["multicamera"]), "com.robotraconteur.imaging.camerainfo.MultiCameraInfo", "device")
+    with args.camera_info_file:
+        robot_info_text = args.camera_info_file.read()
+
+    info_loader = InfoFileLoader(RRN)
+	robot_info, robot_ident_fd = info_loader.LoadInfoFileFromString(robot_info_text, "com.robotraconteur.robotics.robot.RobotInfo", "robot")
+
+	attributes_util = AttributesUtil(RRN)
+    robot_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(robot_info.device_info)
+
+    tormach_inst=Tormach(robot_info)
+	with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
+
+		service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
+        service_ctx.SetServiceAttributes(robot_attributes)
+
+		
+		print('registered')
+		tormach_inst.start()
+		print("press ctrl+c to quit")
+		rospy.spin()
+		# signal.sigwait([signal.SIGTERM,signal.SIGINT])
+		
+		tormach_inst.close()
 
 
-	tormach_inst=Tormach()
-	with args.realsense_info_file:
-			realsense_info_yml = yaml.safe_load(args.realsense_info_file)
-	
-	RRN.RegisterService("tormach_robot", "com.robotraconteur.robotics.robot.Robot", tormach_inst)
-	print('registered')
-	tormach_inst.start()
-	print("press ctrl+c to quit")
-	rospy.spin()
-	# signal.sigwait([signal.SIGTERM,signal.SIGINT])
-	
-	tormach_inst.close()
+if __name__ == "__main__":
+    main()
