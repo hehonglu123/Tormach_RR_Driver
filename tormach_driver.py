@@ -68,6 +68,8 @@ class Tormach(object):
 
 			#initialize ROS Sub for joint callback
 			rospy.Subscriber("/joint_states", JointState, self._joint_callback)
+
+			self.jog_joint_ts=time.time()
 		except:
 			traceback.print_exc()
 
@@ -82,6 +84,24 @@ class Tormach(object):
 			self.jog_pub.publish(self.JE)
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
+
+	def jog_joint(joint_velocity, timeout, wait):
+		# now=time.time()
+		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
+			with self._lock:
+				self.Tj.header.stamp = rospy.Time()
+				Tjp = JointTrajectoryPoint()
+				Tjp.positions = self.joint_position+joint_velocity*(1/self.position_rate)
+				Tjp.velocities = joint_velocity
+				Tjp.time_from_start = rospy.Duration()
+				Tjp.time_from_start.nsecs = 1/self.position_rate
+				self.Tj.points = [Tjp]
+				self.traj_pub.publish(self.Tj)
+				self.position_rate.sleep()
+
+				# if time.time()+timeout>now:
+				# 	return
+
 
 	def _position_command_thread(self):
 		##TODO enum, writeonly wire invalue
@@ -125,24 +145,24 @@ class Tormach(object):
 def main():
 
 	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
-    parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_robot_default_config.yml',required=True,help="Robot info file (required)")
-    args, _ = parser.parse_known_args()
-    RRC.RegisterStdRobDefServiceTypes(RRN)
+	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_robot_default_config.yml',required=True,help="Robot info file (required)")
+	args, _ = parser.parse_known_args()
+	RRC.RegisterStdRobDefServiceTypes(RRN)
 
-    with args.camera_info_file:
-        robot_info_text = args.camera_info_file.read()
+	with args.camera_info_file:
+		robot_info_text = args.camera_info_file.read()
 
-    info_loader = InfoFileLoader(RRN)
+	info_loader = InfoFileLoader(RRN)
 	robot_info, robot_ident_fd = info_loader.LoadInfoFileFromString(robot_info_text, "com.robotraconteur.robotics.robot.RobotInfo", "robot")
 
 	attributes_util = AttributesUtil(RRN)
-    robot_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(robot_info.device_info)
+	robot_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(robot_info.device_info)
 
-    tormach_inst=Tormach(robot_info)
+	tormach_inst=Tormach(robot_info)
 	with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
 
 		service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
-        service_ctx.SetServiceAttributes(robot_attributes)
+		service_ctx.SetServiceAttributes(robot_attributes)
 
 		
 		print('registered')
@@ -155,4 +175,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+	main()
