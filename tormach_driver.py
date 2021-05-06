@@ -21,7 +21,6 @@ class Tormach(object):
 		try:
 			#TODO: 
 			##turn on robot /hal
-			##kinematics info, info loader
 			#initialize robot parameters
 			self.joint_names=['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
 			#initialize ROS node
@@ -130,6 +129,30 @@ class Tormach(object):
 						self.Tj.points = [Tjp]
 						self.traj_pub.publish(self.Tj)
 						self.position_rate.sleep()
+
+	def execute_trajectory(trajectory):
+		#clear previous waypoints
+		self.Tj.points=[]
+		self.Tj.header.stamp = rospy.Time()
+		wp_prev=trajectory.waypoints[0].joint_position
+		time_diff=trajectory.waypoints[0].time_from_start
+		for i in range(len(joint_trajectory.waypoints)):
+			
+			Tjp = JointTrajectoryPoint()
+			Tjp.positions = trajectory.waypoints[i].joint_position
+			Tjp.velocities = (Tjp.positions - wp_prev) / time_diff
+			Tjp.time_from_start = rospy.Duration()
+			Tjp.time_from_start.secs = int(trajectory.waypoints[i].time_from_start)
+			Tjp.time_from_start.nsecs = int((trajectory.waypoints[i].time_from_start % 1)*1e9)
+			self.Tj.points.append(Tjp)
+			wp_prev=trajectory.waypoints[i].joint_position
+			try:
+				time_diff=trajectory.waypoints[i+1].time_from_start-trajectory.waypoints[i].time_from_start
+			except:
+				pass
+		
+		self.traj_pub.publish(self.Tj)
+
 
 	def start(self):
 		self._running=True
