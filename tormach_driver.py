@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys, threading, signal, traceback
+import rospy, time, copy, sys, threading, signal, traceback, argparse
 import numpy as np
 
 #ROS libs
@@ -49,7 +49,8 @@ class Tormach(object):
 			)
 			self.Tj = JointTrajectory()
 			self.Tj.joint_names=self.joint_names
-			self.position_rate = rospy.Rate(100)
+			self.position_rate_num=100
+			self.position_rate = rospy.Rate(self.position_rate_num)
 			#RR
 			self._lock=threading.Lock()
 			self._running=False
@@ -84,16 +85,16 @@ class Tormach(object):
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
 
-	def jog_joint(joint_velocity, timeout, wait):
+	def jog_joint(self,joint_velocity, timeout, wait):
 		# now=time.time()
 		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
 			with self._lock:
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
-				Tjp.positions = self.joint_position+joint_velocity*(1/self.position_rate)
-				Tjp.velocities = joint_velocity
+				Tjp.positions = list(self.joint_position+joint_velocity*(1/self.position_rate_num))
+				Tjp.velocities = list(joint_velocity)
 				Tjp.time_from_start = rospy.Duration()
-				Tjp.time_from_start.nsecs = 1/self.position_rate
+				Tjp.time_from_start.nsecs = int(1e9/self.position_rate_num)
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
 				self.position_rate.sleep()
@@ -130,7 +131,7 @@ class Tormach(object):
 						self.traj_pub.publish(self.Tj)
 						self.position_rate.sleep()
 
-	def execute_trajectory(trajectory):
+	def execute_trajectory(self,trajectory):
 		#clear previous waypoints
 		self.Tj.points=[]
 		self.Tj.header.stamp = rospy.Time()
@@ -172,8 +173,8 @@ def main():
 	args, _ = parser.parse_known_args()
 	RRC.RegisterStdRobDefServiceTypes(RRN)
 
-	with args.camera_info_file:
-		robot_info_text = args.camera_info_file.read()
+	with args.robot_info_file:
+		robot_info_text = args.robot_info_file.read()
 
 	info_loader = InfoFileLoader(RRN)
 	robot_info, robot_ident_fd = info_loader.LoadInfoFileFromString(robot_info_text, "com.robotraconteur.robotics.robot.RobotInfo", "robot")

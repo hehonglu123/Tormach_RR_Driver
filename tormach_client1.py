@@ -35,6 +35,8 @@ c.command_mode = position_mode
 command_seqno = 1
 
 joint_positions_history=[]
+desired_position=[]
+time_stamps=[]
 now=time.time()
 while time.time()-now<10:
     t = time.time()
@@ -49,7 +51,10 @@ while time.time()-now<10:
     joint_cmd1.command = cmd
     cmd_w.OutValue = joint_cmd1
     joint_positions_history.append(state_w.InValue.joint_position[-1])    
+    desired_position.append(cmd)
+    time_stamps.append(time.time()-now)
+plt.plot(time_stamps,joint_positions_history)
+plt.plot(time_stamps,desired_position)
 
-plt.plot(joint_positions_history)
 plt.title('sin_traj')
 plt.show()
