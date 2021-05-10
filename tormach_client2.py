@@ -11,7 +11,7 @@ state_w.WaitInValueValid()
 
 robot_const = RRN.GetConstants("com.robotraconteur.robotics.robot", c)
 halt_mode = robot_const["RobotCommandMode"]["halt"]
-position_mode = robot_const["RobotCommandMode"]["position_command"]
+trajectory_mode = robot_const["RobotCommandMode"]["trajectory"]
 jog_mode = robot_const["RobotCommandMode"]["jog"]
 
 RobotJointCommand = RRN.GetStructureType("com.robotraconteur.robotics.robot.RobotJointCommand",c)
@@ -28,34 +28,39 @@ print('jog complete')
 
 c.command_mode = halt_mode
 time.sleep(0.1)
-c.command_mode = position_mode
+c.command_mode = trajectory_mode
 
 
 
+JointTrajectoryWaypoint = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectoryWaypoint",robot)
+JointTrajectory = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectory",robot)
+waypoints = []
 
-command_seqno = 1
+for i in range(10000):
+    t=float(i/1000.)
+    wp = JointTrajectoryWaypoint()
+    wp.joint_position = np.sin(t)
+    wp.time_from_start = t
+    waypoints.append(wp)
 
-joint_positions_history=[]
-desired_position=[]
-time_stamps=[]
-now=time.time()
-while time.time()-now<10:
-    t = time.time()
+traj = JointTrajectory()
+traj.joint_names = [j.joint_identifier.name for j in robot.robot_info.joint_info]
+traj.waypoints = waypoints
 
-    robot_state = state_w.InValue
 
-    command_seqno += 1
-    joint_cmd1 = RobotJointCommand()
-    joint_cmd1.seqno = command_seqno
-    joint_cmd1.state_seqno = robot_state.seqno
-    cmd = np.array([0,0,0,0,0,1])*np.sin(t)
-    joint_cmd1.command = cmd
-    cmd_w.OutValue = joint_cmd1
-    joint_positions_history.append(state_w.InValue.joint_position[-1])    
-    desired_position.append(cmd)
-    time_stamps.append(time.time()-now)
-plt.plot(time_stamps,joint_positions_history)
-plt.plot(time_stamps,desired_position)
+traj_gen = robot.execute_trajectory(traj)
 
-plt.title('sin_traj')
-plt.show()
+# while (True):
+#     t = time.time()
+
+#     try:
+#         res = traj_gen.Next()
+#         print(res)
+#     except RR.StopIterationException:
+#         break
+
+# plt.plot(time_stamps,joint_positions_history)
+# plt.plot(time_stamps,desired_position)
+
+# plt.title('sin_traj')
+# plt.show()
