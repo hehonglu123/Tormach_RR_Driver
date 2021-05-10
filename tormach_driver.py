@@ -55,6 +55,7 @@ class Tormach(object):
 			self._lock=threading.Lock()
 			self._running=False
 			self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
+			self._robot_info=robot_info
 			# self.position_command.InValueLifespan=0.5
 			self.command_seqno=0	
 			self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
@@ -72,6 +73,15 @@ class Tormach(object):
 			self.jog_joint_ts=time.time()
 		except:
 			traceback.print_exc()
+
+	@property
+	def device_info(self):
+		return self._robot_info.device_info
+
+	@property
+	def robot_info(self):
+		return self._robot_info
+	
 
 	def _joint_callback(self,data):
 		self.joint_position=list(data.position)
@@ -137,21 +147,24 @@ class Tormach(object):
 		self.Tj.header.stamp = rospy.Time()
 		wp_prev=trajectory.waypoints[0].joint_position
 		time_diff=trajectory.waypoints[0].time_from_start
-		for i in range(len(joint_trajectory.waypoints)):
-			
-			Tjp = JointTrajectoryPoint()
-			Tjp.positions = trajectory.waypoints[i].joint_position
-			Tjp.velocities = (Tjp.positions - wp_prev) / time_diff
-			Tjp.time_from_start = rospy.Duration()
-			Tjp.time_from_start.secs = int(trajectory.waypoints[i].time_from_start)
-			Tjp.time_from_start.nsecs = int((trajectory.waypoints[i].time_from_start % 1)*1e9)
-			self.Tj.points.append(Tjp)
-			wp_prev=trajectory.waypoints[i].joint_position
+		for i in range(len(trajectory.waypoints)):
+			try:
+				Tjp = JointTrajectoryPoint()
+				Tjp.positions = trajectory.waypoints[i].joint_position
+				Tjp.velocities = np.array(Tjp.positions - wp_prev) / time_diff
+				# print(Tjp.velocities)
+				Tjp.time_from_start = rospy.Duration()
+				Tjp.time_from_start.secs = int(trajectory.waypoints[i].time_from_start)
+				Tjp.time_from_start.nsecs = int((trajectory.waypoints[i].time_from_start % 1)*1e9)
+				self.Tj.points.append(Tjp)
+				wp_prev=trajectory.waypoints[i].joint_position
+			except:
+				traceback.print_exc()
 			try:
 				time_diff=trajectory.waypoints[i+1].time_from_start-trajectory.waypoints[i].time_from_start
+
 			except:
 				pass
-		
 		self.traj_pub.publish(self.Tj)
 
 
