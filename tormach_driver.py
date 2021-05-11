@@ -55,6 +55,7 @@ class Tormach(object):
 			self._lock=threading.Lock()
 			self._running=False
 			self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
+			self.trajectory_status_struct=RRN.NewStructure("com.robotraconteur.robotics.trajectory.TrajectoryStatus")
 			# self.position_command.InValueLifespan=0.5
 			self.command_seqno=0	
 			self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
@@ -151,8 +152,9 @@ class Tormach(object):
 				time_diff=trajectory.waypoints[i+1].time_from_start-trajectory.waypoints[i].time_from_start
 			except:
 				pass
-		
 		self.traj_pub.publish(self.Tj)
+
+		yield self.trajectory_status_struct
 
 
 	def start(self):
