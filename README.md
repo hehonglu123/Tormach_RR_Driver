@@ -30,6 +30,7 @@ source /opt/ros/noetic/setup.bash
   export $ROS_MASTER_URI=http://ros-dist-ui:11311/
   export $ROS_IP=<IP of PC>
 ```
+Make sure rostopics/services are visible after the settings.
 * Start RR driver
 ```
 python tormach_driver.py --robot-info-file=tormach_za06_robot_default_config.yml
