@@ -55,11 +55,8 @@ class Tormach(object):
 			self._lock=threading.Lock()
 			self._running=False
 			self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
-<<<<<<< HEAD
 			self.trajectory_status_struct=RRN.NewStructure("com.robotraconteur.robotics.trajectory.TrajectoryStatus")
-=======
 			self._robot_info=robot_info
->>>>>>> 4ccc4c4021c28e58f9574ea664811098e0548f97
 			# self.position_command.InValueLifespan=0.5
 			self.command_seqno=0	
 			self.robot_consts = RRN.GetConstants( "com.robotraconteur.robotics.robot")
@@ -156,7 +153,6 @@ class Tormach(object):
 				Tjp = JointTrajectoryPoint()
 				Tjp.positions = trajectory.waypoints[i].joint_position
 				Tjp.velocities = np.array(Tjp.positions - wp_prev) / time_diff
-				# print(Tjp.velocities)
 				Tjp.time_from_start = rospy.Duration()
 				Tjp.time_from_start.secs = int(trajectory.waypoints[i].time_from_start)
 				Tjp.time_from_start.nsecs = int((trajectory.waypoints[i].time_from_start % 1)*1e9)
