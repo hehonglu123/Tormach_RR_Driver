@@ -32,23 +32,24 @@ c.command_mode = trajectory_mode
 
 
 
-JointTrajectoryWaypoint = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectoryWaypoint",robot)
-JointTrajectory = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectory",robot)
+JointTrajectoryWaypoint = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectoryWaypoint",c)
+JointTrajectory = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.JointTrajectory",c)
 waypoints = []
 
 for i in range(10000):
     t=float(i/1000.)
     wp = JointTrajectoryWaypoint()
-    wp.joint_position = np.sin(t)
+    wp.joint_position = [0,0,0,0,0,np.sin(t)]
     wp.time_from_start = t
     waypoints.append(wp)
 
 traj = JointTrajectory()
-traj.joint_names = [j.joint_identifier.name for j in robot.robot_info.joint_info]
+# traj.joint_names = [j.joint_identifier.name for j in c.robot_info.joint_info]
+traj.joint_names=['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6']
 traj.waypoints = waypoints
 
 
-traj_gen = robot.execute_trajectory(traj)
+traj_gen = c.execute_trajectory(traj)
 
 # while (True):
 #     t = time.time()

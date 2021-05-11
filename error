@@ -1,0 +1,3 @@
+RobotRaconteur.RobotRaconteurPythonError.DataTypeException: RobotRaconteur.DataTypeError Scalar expected for field "value.joint_info[0].joint_identifier.uuid" expected Robot Raconteur type "com.robotraconteur.uuid.UUID"
+
+
