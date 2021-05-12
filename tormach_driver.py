@@ -25,11 +25,16 @@ class traj_gen(object):
 		self.pub=pub
 		self.traj=traj
 		rospy.Subscriber("/position_trajectory_controller/state", JointTrajectoryControllerState, self._callback)
+		rospy.Subscriber("/joint_states", JointState, self._joint_callback)
 		self._exe=False
 	
 	def _callback(self,data):
 		self.pos_error=data.error.positions
 		self.vel_error=data.error.velocities
+
+	def _joint_callback(self,data):
+		self.joint_position=data.position
+
 
 	def Next(self):
 		if not self._exe:
@@ -37,7 +42,8 @@ class traj_gen(object):
 			self._exe=True
 			time.sleep(0.5)
 		
-		if np.linalg.norm(self.pos_error)==0. and np.linalg.norm(self.vel_error)==0.:
+		# if np.linalg.norm(self.pos_error)<=0.000001:
+		if np.linalg.norm(self.joint_position-self.traj.points[-1].positions)<=0.000001:
 			raise StopIterationException()
 		time.sleep(0.1)
 		
@@ -150,7 +156,6 @@ class Tormach(object):
 
 
 	def _position_command_thread(self):
-		##TODO enum, writeonly wire invalue
 		while self._running:
 			with self._lock:
 				##read wire value
