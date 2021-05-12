@@ -21,7 +21,7 @@ time.sleep(0.1)
 c.command_mode = jog_mode
 
 while np.linalg.norm(state_w.InValue.joint_position)>0.01:
-    c.jog_joint(-state_w.InValue.joint_position,1, True)
+	c.jog_joint(-state_w.InValue.joint_position,1, True)
 print('jog complete')
 
 
@@ -37,11 +37,11 @@ JointTrajectory = RRN.GetStructureType("com.robotraconteur.robotics.trajectory.J
 waypoints = []
 
 for i in range(10000):
-    t=float(i/1000.)
-    wp = JointTrajectoryWaypoint()
-    wp.joint_position = [0,0,0,0,0,np.sin(t)]
-    wp.time_from_start = t
-    waypoints.append(wp)
+	t=float(i/1000.)
+	wp = JointTrajectoryWaypoint()
+	wp.joint_position = [0,0,0,0,0,np.sin(t)]
+	wp.time_from_start = t
+	waypoints.append(wp)
 
 traj = JointTrajectory()
 # traj.joint_names = [j.joint_identifier.name for j in c.robot_info.joint_info]
@@ -51,14 +51,14 @@ traj.waypoints = waypoints
 
 traj_gen = c.execute_trajectory(traj)
 
-# while (True):
-#     t = time.time()
+while (True):
+	t = time.time()
 
-#     try:
-#         res = traj_gen.Next()
-#         print(res)
-#     except RR.StopIterationException:
-#         break
+	try:
+		res = traj_gen.Next()
+	except RR.StopIterationException:
+		print('completed')
+		break
 
 # plt.plot(time_stamps,joint_positions_history)
 # plt.plot(time_stamps,desired_position)

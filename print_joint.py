@@ -12,7 +12,6 @@ robot=robot_sub.GetDefaultClientWait(1)
 
 state_w = robot_sub.SubscribeWire("robot_state")
 
-print(robot.robot_info.joint_info[0].passive)
 print(robot.robot_info.device_info.device.name)
 
 

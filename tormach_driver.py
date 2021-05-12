@@ -7,6 +7,7 @@ from sensor_msgs.msg import JointState
 from robot_jog_msgs.srv import *
 from robot_jog_msgs.msg import *
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from control_msgs.msg import JointTrajectoryControllerState
 
 #RR libs
 import RobotRaconteur as RR
@@ -15,6 +16,39 @@ import RobotRaconteurCompanion as RRC
 from RobotRaconteurCompanion.Util.InfoFileLoader import InfoFileLoader
 from RobotRaconteurCompanion.Util.DateTimeUtil import DateTimeUtil
 from RobotRaconteurCompanion.Util.AttributesUtil import AttributesUtil
+from RobotRaconteur.RobotRaconteurPythonError import StopIterationException
+
+
+class traj_gen(object):
+	def __init__(self,pub,traj):
+		self._aborted=False
+		self.pub=pub
+		self.traj=traj
+		rospy.Subscriber("/position_trajectory_controller/state", JointTrajectoryControllerState, self._callback)
+		self._exe=False
+	
+	def _callback(self,data):
+		self.pos_error=data.error.positions
+		self.vel_error=data.error.velocities
+
+	def Next(self):
+		if not self._exe:
+			self.pub.publish(self.traj)
+			self._exe=True
+			time.sleep(0.5)
+		
+		if np.linalg.norm(self.pos_error)==0. and np.linalg.norm(self.vel_error)==0.:
+			raise StopIterationException()
+		time.sleep(0.1)
+		
+	def Abort(self):
+		self._aborted=True
+		
+	def Close(self):
+		raise StopIterationException()
+	
+
+
 
 class Tormach(object):
 	def __init__(self,robot_info):
@@ -102,7 +136,8 @@ class Tormach(object):
 			with self._lock:
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
-				Tjp.positions = list(self.joint_position+joint_velocity*(1/self.position_rate_num))
+				###rate need to be changed here
+				Tjp.positions = list(self.joint_position+joint_velocity*(10/self.position_rate_num))
 				Tjp.velocities = list(joint_velocity)
 				Tjp.time_from_start = rospy.Duration()
 				Tjp.time_from_start.nsecs = int(1e9/self.position_rate_num)
@@ -165,9 +200,9 @@ class Tormach(object):
 
 			except:
 				pass
-		self.traj_pub.publish(self.Tj)
+		# self.traj_pub.publish(self.Tj)
 
-		yield self.trajectory_status_struct
+		return traj_gen(self.traj_pub,self.Tj)
 
 
 	def start(self):
@@ -196,6 +231,22 @@ def main():
 
 	attributes_util = AttributesUtil(RRN)
 	robot_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(robot_info.device_info)
+
+	######temp info_loader modification
+	uuid_dtype=RRN.GetNamedArrayDType('com.robotraconteur.uuid.UUID')
+	robot_info.chains[0].tcp_max_velocity = np.zeros((1,),dtype=robot_info.chains[0].tcp_max_velocity.dtype)
+	robot_info.chains[0].tcp_reduced_max_velocity = np.zeros((1,),dtype=robot_info.chains[0].tcp_reduced_max_velocity.dtype)
+	robot_info.chains[0].tcp_max_acceleration = np.zeros((1,),dtype=robot_info.chains[0].tcp_max_acceleration.dtype)
+	robot_info.chains[0].tcp_reduced_max_acceleration = np.zeros((1,),dtype=robot_info.chains[0].tcp_reduced_max_acceleration.dtype)
+
+	robot_info.chains[0].kin_chain_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
+	robot_info.chains[0].flange_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
+
+	for j in robot_info.joint_info:
+	    j.passive=False
+	    j.joint_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
+	#########
+
 
 	tormach_inst=Tormach(robot_info)
 	with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
