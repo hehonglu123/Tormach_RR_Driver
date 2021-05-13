@@ -110,7 +110,6 @@ class Tormach(object):
 
 			#initialize ROS Sub for joint callback
 			rospy.Subscriber("/joint_states", JointState, self._joint_callback)
-
 			self.jog_joint_ts=time.time()
 		except:
 			traceback.print_exc()
@@ -138,21 +137,26 @@ class Tormach(object):
 
 	def jog_joint(self,joint_velocity, timeout, wait):
 		# now=time.time()
+		try:
+			if np.linalg.norm(self.last_cmd-self.joint_position)>0.1:
+				self.last_cmd=self.joint_position
+		except:
+			self.last_cmd=self.joint_position
 		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
 			with self._lock:
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
 				###rate need to be changed here
-				Tjp.positions = list(self.joint_position+joint_velocity*(10/self.position_rate_num))
+				Tjp.positions = list(self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec())
 				Tjp.velocities = list(joint_velocity)
 				Tjp.time_from_start = rospy.Duration()
-				Tjp.time_from_start.nsecs = int(1e9/self.position_rate_num)
+				Tjp.time_from_start.nsecs = 1 #int(1e9/self.position_rate_num)
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
 				self.position_rate.sleep()
-
 				# if time.time()+timeout>now:
 				# 	return
+				self.last_cmd=self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec()
 
 
 	def _position_command_thread(self):

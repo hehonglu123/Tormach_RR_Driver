@@ -39,7 +39,7 @@ desired_position=[]
 time_stamps=[]
 now=time.time()
 while time.time()-now<10:
-    t = time.time()
+    t = time.time()-now
 
     robot_state = state_w.InValue
 
@@ -47,10 +47,10 @@ while time.time()-now<10:
     joint_cmd1 = RobotJointCommand()
     joint_cmd1.seqno = command_seqno
     joint_cmd1.state_seqno = robot_state.seqno
-    cmd = np.array([0,0,0,0,0,1])*np.sin(t)
+    cmd = np.array([1,0,0,0,0,0])*np.sin(t)
     joint_cmd1.command = cmd
     cmd_w.OutValue = joint_cmd1
-    joint_positions_history.append(state_w.InValue.joint_position[-1])    
+    joint_positions_history.append(state_w.InValue.joint_position[0])    
     desired_position.append(cmd)
     time_stamps.append(time.time()-now)
 plt.plot(time_stamps,joint_positions_history)

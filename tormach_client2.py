@@ -39,7 +39,7 @@ waypoints = []
 for i in range(10000):
 	t=float(i/1000.)
 	wp = JointTrajectoryWaypoint()
-	wp.joint_position = [0,0,0,0,0,np.sin(t)]
+	wp.joint_position = [np.sin(t),0,0,0,0,0]
 	wp.time_from_start = t
 	waypoints.append(wp)
 
