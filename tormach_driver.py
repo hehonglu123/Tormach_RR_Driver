@@ -162,23 +162,24 @@ class Tormach(object):
 		try:
 			if np.linalg.norm(self.last_cmd-self.joint_position)>0.1:
 				self.last_cmd=self.joint_position
+				self.last_call_time=time.time()
 		except:
 			self.last_cmd=self.joint_position
+			self.last_call_time=time.time()
 		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
 			with self._lock:
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
 				###rate need to be changed here
-				Tjp.positions = self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec()
-				Tjp.velocities = (Tjp.positions - self.joint_position) * self.position_rate.sleep_dur.to_sec()
+				Tjp.positions = self.last_cmd+joint_velocity*(time.time()-self.last_call_time)
+				Tjp.velocities = joint_velocity
 				Tjp.time_from_start = rospy.Duration()
 				Tjp.time_from_start.nsecs = 1 #int(1e9/self.position_rate_num)
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
-				self.position_rate.sleep()
 				# if time.time()+timeout>now:
 				# 	return
-				self.last_cmd=self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec()
+				self.last_cmd=self.last_cmd+joint_velocity*(time.time()-self.last_call_time)
 
 
 	def _position_command_thread(self):
