@@ -27,6 +27,10 @@ source /opt/ros/noetic/setup.bash
 ```
 * Set up ROS communication protocol on RR driver PC
 ```
+sudo nano /etc/hosts
+```
+Add `ros-dist-ui` and the IP of Tormach computer in the host book, then
+```
   export $ROS_MASTER_URI=http://ros-dist-ui:11311/
   export $ROS_IP=<IP of PC>
 ```
