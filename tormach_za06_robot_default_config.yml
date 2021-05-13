@@ -63,7 +63,7 @@ chains:
   - x: 0.1
     y: 0.0
     z: 0.0
-  - x: 0.1175
+  - x: 0.0
     y: 0.0
     z: 0.0
   flange_identifier: tool0

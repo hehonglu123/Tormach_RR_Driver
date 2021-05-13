@@ -118,15 +118,8 @@ class Tormach(object):
 
 			#initialize kinematics para
 			self.num_joints=len(robot_info.chains[0].joint_numbers)
-
-			# for i in range(self.num_joints):
-			# 	self.H.append([robot_info.chains[0].H[i][0],robot_info.chains[0].H[i][1],robot_info.chains[0].H[i][2]])
-			# 	self.P.append([robot_info.chains[0].P[i][0],robot_info.chains[0].P[i][1],robot_info.chains[0].P[i][2]])
-			# self.P.append([robot_info.chains[0].P[-1][0],robot_info.chains[0].P[-1][1],robot_info.chains[0].P[-1][2]])
 			self.H=np.transpose(np.array(robot_info.chains[0].H.tolist()))
 			self.P=np.array(robot_info.chains[0].P.tolist())
-			print(self.H)
-			print(self.P)
 			
 			self.robot_def=Robot(self.H,np.transpose(self.P),np.zeros(self.num_joints))
 		except:
@@ -146,8 +139,7 @@ class Tormach(object):
 		self.robot_state_struct.joint_position=self.joint_position
 		self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
 		#fwdkin calculation
-		self.robot_state_struct.kin_chain_tcp=[]
-		self.robot_state_struct.kin_chain_tcp.append(np.zeros((1,),dtype=self.pose_dtype))
+		self.robot_state_struct.kin_chain_tcp=np.zeros((1,),dtype=self.pose_dtype)
 		transform=fwdkin(self.robot_def,self.joint_position)
 		self.robot_state_struct.kin_chain_tcp[0]['position']['x']=transform.p[0]
 		self.robot_state_struct.kin_chain_tcp[0]['position']['y']=transform.p[1]
@@ -177,8 +169,8 @@ class Tormach(object):
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
 				###rate need to be changed here
-				Tjp.positions = list(self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec())
-				Tjp.velocities = list(joint_velocity)
+				Tjp.positions = self.last_cmd+joint_velocity*self.position_rate.sleep_dur.to_sec()
+				Tjp.velocities = (Tjp.positions - self.joint_position) * self.position_rate.sleep_dur.to_sec()
 				Tjp.time_from_start = rospy.Duration()
 				Tjp.time_from_start.nsecs = 1 #int(1e9/self.position_rate_num)
 				self.Tj.points = [Tjp]
@@ -288,7 +280,7 @@ def main():
 
 
 	tormach_inst=Tormach(robot_info)
-	with RR.ServerNodeSetup("Tormach_Service", 11111) as node_setup:
+	with RR.ServerNodeSetup("tormach_service", 11111) as node_setup:
 
 		service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
 		service_ctx.SetServiceAttributes(robot_attributes)
