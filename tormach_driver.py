@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy, time, copy, sys, threading, signal, traceback, argparse
 import numpy as np
+from general_robotics_toolbox import *
 
 #ROS libs
 from sensor_msgs.msg import JointState
@@ -96,6 +97,9 @@ class Tormach(object):
 			self._running=False
 			self.robot_state_struct=RRN.NewStructure("com.robotraconteur.robotics.robot.RobotState")
 			self.trajectory_status_struct=RRN.NewStructure("com.robotraconteur.robotics.trajectory.TrajectoryStatus")
+			self.pose_dtype=RRN.GetNamedArrayDType("com.robotraconteur.geometry.Pose")
+			self.point_dtype=RRN.GetNamedArrayDType("com.robotraconteur.geometry.Point")
+			self.quaternion_dtype=RRN.GetNamedArrayDType("com.robotraconteur.geometry.Quaternion")
 			self._robot_info=robot_info
 			# self.position_command.InValueLifespan=0.5
 			self.command_seqno=0	
@@ -111,6 +115,12 @@ class Tormach(object):
 			#initialize ROS Sub for joint callback
 			rospy.Subscriber("/joint_states", JointState, self._joint_callback)
 			self.jog_joint_ts=time.time()
+
+			#initialize kinematics para
+			self.H=robot_info.chains[0].H
+			self.P=robot_info.chains[0].P
+			self.num_joints=len(robot_info.chains[0].joint_numbers)
+			self.robot_def=Robot(H,np.transpose(self.P),np.zeros(self.num_joints))
 		except:
 			traceback.print_exc()
 
@@ -127,6 +137,17 @@ class Tormach(object):
 		self.joint_position=list(data.position)
 		self.robot_state_struct.joint_position=self.joint_position
 		self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
+		#fwdkin calculation
+		self.robot_state_struct.kin_chain_tcp=[np.zeros((1,),dtype=pose_dtype)]
+		R,p=fwdkin(self.robot_def,self.joint_position)
+		self.robot_state_struct.kin_chain_tcp[0]['position']['x']=p[0]
+		self.robot_state_struct.kin_chain_tcp[0]['position']['y']=p[1]
+		self.robot_state_struct.kin_chain_tcp[0]['position']['z']=p[2]
+		quat=R2q(R)
+		self.robot_state_struct.kin_chain_tcp[0]['orientation']['w']=quat[0]
+		self.robot_state_struct.kin_chain_tcp[0]['orientation']['x']=quat[1]
+		self.robot_state_struct.kin_chain_tcp[0]['orientation']['y']=quat[2]
+		self.robot_state_struct.kin_chain_tcp[0]['orientation']['z']=quat[3]
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
