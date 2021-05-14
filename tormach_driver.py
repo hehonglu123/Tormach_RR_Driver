@@ -251,7 +251,7 @@ class Tormach(object):
 def main():
 
 	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
-	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_robot_default_config.yml',required=True,help="Robot info file (required)")
+	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
 	args, _ = parser.parse_known_args()
 	RRC.RegisterStdRobDefServiceTypes(RRN)
 
