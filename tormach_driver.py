@@ -9,7 +9,7 @@ from robot_jog_msgs.srv import *
 from robot_jog_msgs.msg import *
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import JointTrajectoryControllerState
-
+from std_msgs.msg import Bool
 #RR libs
 import RobotRaconteur as RR
 RRN=RR.RobotRaconteurNode.s
@@ -236,6 +236,17 @@ class Tormach(object):
 
 		return traj_gen(self.traj_pub,self.Tj)
 
+	def setf_signal(signal_name, value):
+		#signal_name=<n>, value=1 (True) or 0 (False)
+		pub = rospy.Publisher('/hal_io/digital_out_'+signal_name, Bool, queue_size=1)
+		temp=Bool
+		temp.data=int(value[0])
+		pub.publish(temp)
+
+	def getf_signal(signal_name):
+		#signal_name=<n>
+		data_in = rospy.wait_for_message('/hal_io/digital_in_'+signal_name, Bool)
+		return np.float64(int(data_in.data))
 
 	def start(self):
 		self._running=True
