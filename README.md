@@ -57,5 +57,5 @@ python tormach_client1.py
 
 ## TODO:
 * Dockerize
-* Add DIO support
+* Add DIO support (tests needed)
 * Laser Tracking Example
