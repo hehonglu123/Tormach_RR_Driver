@@ -12,6 +12,7 @@ Robot Raconteur is an object oriented robot communication library. This driver u
 
 ## Instructions:
 
+![Setup](images/Hardware_setup.jpg)
 ### Running RR driver
 In order to start Robot Raconteur driver, 
 * Build custom ROS messages in a separate ROS workspace (one-time only), and source it
@@ -49,3 +50,6 @@ python tormach_client1.py
 ```
 * python tormach_client2.py
 ```
+
+
+![Detailed Interface Info](images/ROS_RR_bridge.jpg)
