@@ -4,14 +4,15 @@ import sys, time, yaml, argparse, traceback
 from importlib import import_module
 from laser_detection import laser_detection
 import cv2
+sys.path.append('../toolbox/')
 from general_robotics_toolbox import Robot, fwdkin
 from vel_emulate_sub import EmulatedVelocityControl
+from autodiscovery import autodiscover
 
 current_frame_rgb=None
 current_frame_depth=None
 new_val=False
-R_realsense=None
-p_realsense=None
+
 
 def normalize_dq(q):
 	q[:-1]=q[:-1]/(np.linalg.norm(q[:-1])) 
@@ -88,25 +89,12 @@ def main():
 	global new_val, p_realsense, R_realsense
 	#Accept the names of the webcams and the nodename from command line
 	parser = argparse.ArgumentParser(description="RR plug and play client")
-	parser.add_argument("--robot-name",type=str,help="List of camera names separated with commas")
-	parser.add_argument("--url",type=str,default='rr+tcp://[fe80::922f:c9e6:5fe5:51d1]:52222/?nodeid=87518815-d3a3-4e33-a1be-13325da2461f&service=cognex',
-	help="List of camera names separated with commas")
+	parser.add_argument("--robot-name",type=str,help="Robot name")
 	args, _ = parser.parse_known_args()
 
 	robot_name=args.robot_name
-	url=args.url
-
+	robto_url=autodiscover("com.robotraconteur.robotics.robot.Robot",robot_name)
 	#########read in yaml file for robot client
-	with open(r'../client_yaml/client_'+robot_name+'.yaml') as file:
-		robot_yaml = yaml.load(file, Loader=yaml.FullLoader)
-	with open('camera_extrinsic.yaml') as file:
-		realsense_param = yaml.load(file, Loader=yaml.FullLoader)
-
-
-
-	###realsense part
-	p_realsense=np.array(realsense_param['p'])
-	R_realsense=np.array(realsense_param['R'])
 
 	url='rr+tcp://localhost:25415?service=Multi_Cam_Service'
 
@@ -117,27 +105,27 @@ def main():
 
 	#Connect the pipe FrameStream to get the PipeEndpoint p
 	cam_rgb=Multi_Cam_obj.get_cameras(0)
-	cam_depth=Multi_Cam_obj.get_cameras(1)
+	# cam_depth=Multi_Cam_obj.get_cameras(1)
 
 
 	p_rgb=cam_rgb.frame_stream.Connect(-1)
-	p_depth=cam_depth.frame_stream.Connect(-1)
+	# p_depth=cam_depth.frame_stream.Connect(-1)
 	#Set the callback for when a new pipe packet is received to the
 	#new_frame function
 	p_rgb.PacketReceivedEvent+=new_frame_rgb
-	p_depth.PacketReceivedEvent+=new_frame_depth
+	# p_depth.PacketReceivedEvent+=new_frame_depth
 
 
 	try:
 		cam_rgb.start_streaming()
-		cam_depth.start_streaming()
+		# cam_depth.start_streaming()
 	except: 
 		traceback.print_exc()
 		pass
 
 
 	###robot part
-	robot_sub=RRN.SubscribeService(robot_yaml['url'])
+	robot_sub=RRN.SubscribeService(robto_url)
 	####get client object
 	robot=robot_sub.GetDefaultClientWait(1)
 	#jog mode first
