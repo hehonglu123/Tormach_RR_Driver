@@ -4,8 +4,8 @@ import numpy as np
 def laser_detection(image):
 	# image = cv2.resize(image,(1600,900))
 	hsv=cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-	lowerb = np.array([180*179/255, 50, 200])
-	upperb = np.array([255*179/255, 255, 255])
+	lowerb = np.array([30, 50, 200])
+	upperb = np.array([40, 255, 255])
 	laser_filtered = cv2.inRange(hsv, lowerb, upperb)
 	# cv2.imshow('image',laser_filtered)
 	# cv2.waitKey(0)
@@ -17,5 +17,5 @@ def laser_detection(image):
 			# print(stats[i][4])
 			return(centroids[i])
 
-# laser_detection(cv2.imread("test/test5.jpg"))
+# laser_detection(cv2.imread("green.jpg"))
 

@@ -1,11 +1,12 @@
 import numpy as np
+from qpsolvers import solve_qp
 from RobotRaconteur.Client import *
 import sys, time, yaml, argparse, traceback
 from importlib import import_module
 from laser_detection import laser_detection
 import cv2
 sys.path.append('../toolbox/')
-from general_robotics_toolbox import Robot, fwdkin
+from general_robotics_toolbox import *
 from vel_emulate_sub import EmulatedVelocityControl
 from autodiscovery import autodiscover
 
@@ -52,7 +53,7 @@ def new_frame_depth(pipe_ep):
 
 def move(n, robot_def,vel_ctrl,vd,R):
 	try:
-		w=0.2
+		w=10
 		Kq=.01*np.eye(n)    #small value to make sure positive definite
 		KR=np.eye(3)        #gains for position and orientation error
 
@@ -72,7 +73,7 @@ def move(n, robot_def,vel_ctrl,vd,R):
 		s=np.sin(theta/2)*k         #eR2
 		wd=-np.dot(KR,s)  
 		f=-np.dot(np.transpose(Jp),vd)-w*np.dot(np.transpose(JR),wd)
-		qdot=0.1*normalize_dq(solve_qp(H, f))
+		qdot=0.2*normalize_dq(solve_qp(H, f))
 		vel_ctrl.set_velocity_command(qdot)
 
 	except:
@@ -93,7 +94,7 @@ def main():
 	args, _ = parser.parse_known_args()
 
 	robot_name=args.robot_name
-	robto_url=autodiscover("com.robotraconteur.robotics.robot.Robot",robot_name)
+	robot_url=autodiscover("com.robotraconteur.robotics.robot.Robot",robot_name)
 	#########read in yaml file for robot client
 
 	url='rr+tcp://localhost:25415?service=Multi_Cam_Service'
@@ -125,12 +126,10 @@ def main():
 
 
 	###robot part
-	robot_sub=RRN.SubscribeService(robto_url)
+	robot_sub=RRN.SubscribeService(robot_url)
 	####get client object
 	robot=robot_sub.GetDefaultClientWait(1)
-	#jog mode first
-	robot.command_mode = halt_mode 
-	robot.command_mode = jog_mode 
+	
 	####get subscription wire
 
 	##robot wire
@@ -145,7 +144,8 @@ def main():
 	jog_mode = robot_const["RobotCommandMode"]["jog"]   
 	position_mode = robot_const["RobotCommandMode"]["position_command"]
 	robot.command_mode = halt_mode
-
+	time.sleep(0.1)
+	robot.command_mode = jog_mode 
 	##########Initialize robot parameters   #need modify
 	num_joints=len(robot.robot_info.joint_info)
 	P=np.array(robot.robot_info.chains[0].P.tolist())
@@ -170,12 +170,17 @@ def main():
 
 
 	while True:
-		vel_ctrl.set_velocity_command(np.array(qdot))
-
 		#show image
 		if (not current_frame_rgb is None):
 			cv2.imshow("Image",current_frame_rgb)
 			centroid=laser_detection(current_frame_rgb)
+			try:
+				centroid[0]
+
+			except:
+				vel_ctrl.set_velocity_command(np.zeros(num_joints))
+				# move(num_joints, robot_def,vel_ctrl,np.zeros(3),R)
+				continue
 			vd=np.zeros(3)
 			vd[1]=-0.0001*(centroid[0]-640)
 			vd[2]=0.0001*(centroid[1]-360)
