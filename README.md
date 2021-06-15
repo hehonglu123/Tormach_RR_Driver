@@ -30,7 +30,7 @@ source /opt/ros/noetic/setup.bash
 ```
 sudo nano /etc/hosts
 ```
-Add `ros-dist-ui` and the IP of Tormach computer in the host book, then
+Add `ros-dist-ui` and the IP of Tormach computer in the host book. Then in the terminal
 ```
   export $ROS_MASTER_URI=http://ros-dist-ui:11311/
   export $ROS_IP=<IP of PC>
