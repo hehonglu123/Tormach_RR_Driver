@@ -21,7 +21,7 @@ time.sleep(0.1)
 c.command_mode = jog_mode
 
 while np.linalg.norm(state_w.InValue.joint_position)>0.01:
-	c.jog_joint(-state_w.InValue.joint_position,1, True)
+	c.jog_joint(-0.2*state_w.InValue.joint_position,1, True)
 print('jog complete')
 
 
