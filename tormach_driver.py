@@ -157,29 +157,53 @@ class Tormach(object):
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
 
+	# def jog_joint(self,joint_velocity, timeout, wait):
+	# 	try:
+	# 		#incase last call was long time ago
+	# 		if np.linalg.norm(self.last_cmd-self.joint_position)>0.2 or time.time()-self.last_call_time>1.:
+	# 			self.last_cmd=self.joint_position
+	# 			self.last_call_time=time.time()
+	# 	except:
+	# 		self.last_cmd=self.joint_position
+	# 		self.last_call_time=time.time()
+
+	# 	if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
+	# 		with self._lock:
+
+	# 			self.jog_pub.publish(self.JE)
+	# 			self.jog_srv(self.joint_names,self.last_cmd+joint_velocity*(time.time()-self.last_call_time))
+	# 			self.jog_rate.sleep()
+
+
+
 	def jog_joint(self,joint_velocity, timeout, wait):
 		# now=time.time()
 		try:
-			if np.linalg.norm(self.last_cmd-self.joint_position)>0.1:
+			#incase last call was long time ago
+			if np.linalg.norm(self.last_cmd-self.joint_position)>0.2 or time.time()-self.last_call_time>1.:
 				self.last_cmd=self.joint_position
 				self.last_call_time=time.time()
 		except:
 			self.last_cmd=self.joint_position
 			self.last_call_time=time.time()
+			
 		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
 			with self._lock:
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
-				###rate need to be changed here
-				Tjp.positions = self.last_cmd+joint_velocity*(time.time()-self.last_call_time)
-				Tjp.velocities = joint_velocity
+				###use current joint position here
+				Tjp.positions = self.joint_position+joint_velocity*(time.time()-self.last_call_time)
+				Tjp.velocities = joint_velocity/2.
 				Tjp.time_from_start = rospy.Duration()
-				Tjp.time_from_start.nsecs = 1 #int(1e9/self.position_rate_num)
+
+				Tjp.time_from_start.nsecs = 1#int((time.time()-self.last_call_time)*1e9)
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
 				# if time.time()+timeout>now:
 				# 	return
 				self.last_cmd=self.last_cmd+joint_velocity*(time.time()-self.last_call_time)
+
+				# print(time.time()-self.last_call_time)
 
 
 	def _position_command_thread(self):
