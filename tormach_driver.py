@@ -111,6 +111,7 @@ class Tormach(object):
 			# self._date_time_util = DateTimeUtil(RRN)
 			# self._date_time_utc_type = RRN.GetPodDType('com.robotraconteur.datetime.DateTimeUTC')
 			self._date_time_util=RRN.GetNamedArrayDType("com.robotraconteur.datetime.TimeSpec3")
+			self.command_mode=self.robot_consts['RobotCommandMode']['halt']
 
 			#initialize ROS Sub for joint callback
 			rospy.Subscriber("/joint_states", JointState, self._joint_callback)
@@ -149,6 +150,7 @@ class Tormach(object):
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['x']=quat[1]
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['y']=quat[2]
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['z']=quat[3]
+		self.robot_state_struct.command_mode=self.command_mode
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
