@@ -69,10 +69,10 @@ chains:
   flange_identifier: tool0
   flange_pose:
     orientation:
-      w: 0.7071067811882787
-      x: 0.0
-      y: 0.7071067811848163
-      z: 0.0
+      w: 0.0
+      x: 0.70710678
+      y: 0.0
+      z: 0.70710678
     position:
       x: 0.0
       y: 0.0

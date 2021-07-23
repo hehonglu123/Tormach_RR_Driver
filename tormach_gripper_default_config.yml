@@ -1,0 +1,40 @@
+device_info:
+  device:
+    name: tormach_gripper
+  manufacturer:
+    name: Tormach Robotics
+    uuid: 64ee7db7-ddf9-4f84-84ce-0a76dd4a93f9
+  model:
+    name: tormach_gripper
+    uuid: a6af4a06-daa0-4ad7-815c-5619329ddb59
+  user_description: Tormach Gripper
+  serial_number: 123456789
+  device_classes:
+    - class_identifier:
+        name: gripper
+        uuid: eb19e134-8aa7-4f2a-837e-90fbe890c544
+      subclasses: 
+        - hard
+  implemented_types:
+    - com.robotraconteur.robotics.tool.Tool
+tool_type: pneumatic_gripper
+tool_capabilities:
+- open_close_command
+tcp:
+  translation:
+    x: 0.152
+    y: -0.05
+    z: 0
+  rotation:
+    x: 0
+    y: 0
+    z: 0
+    w: 1
+close_position: 0
+open_position: 1
+command_min: 0
+command_max: 1
+command_close: 0
+command_open: 1
+sensor_min:
+sensor_max:

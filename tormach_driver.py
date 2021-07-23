@@ -68,7 +68,8 @@ class Tormach(object):
 			rospy.init_node('Tormach_RR_Service', anonymous=True)
 			
 
-
+			self._jog_joint_command_set=False
+			self._jog_joint_command_set_timestamp=time.time()
 			#publisher for jogexecute
 			self.JE=JogExecute()
 			self.JE.execute=True
@@ -159,53 +160,33 @@ class Tormach(object):
 			self.jog_srv(self.joint_names,joint_position)
 			self.jog_rate.sleep()
 
-	# def jog_joint(self,joint_velocity, timeout, wait):
-	# 	try:
-	# 		#incase last call was long time ago
-	# 		if np.linalg.norm(self.last_cmd-self.joint_position)>0.2 or time.time()-self.last_call_time>1.:
-	# 			self.last_cmd=self.joint_position
-	# 			self.last_call_time=time.time()
-	# 	except:
-	# 		self.last_cmd=self.joint_position
-	# 		self.last_call_time=time.time()
-
-	# 	if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
-	# 		with self._lock:
-
-	# 			self.jog_pub.publish(self.JE)
-	# 			self.jog_srv(self.joint_names,self.last_cmd+joint_velocity*(time.time()-self.last_call_time))
-	# 			self.jog_rate.sleep()
-
-
-
 	def jog_joint(self,joint_velocity, timeout, wait):
-		# now=time.time()
-		try:
-			#incase last call was long time ago
-			if np.linalg.norm(self.last_cmd-self.joint_position)>0.2 or time.time()-self.last_call_time>1.:
-				self.last_cmd=self.joint_position
-				self.last_call_time=time.time()
-		except:
-			self.last_cmd=self.joint_position
-			self.last_call_time=time.time()
-			
-		if self.command_mode==self.robot_consts['RobotCommandMode']['jog']:
+		self._jog_joint_command_set=True
+		self._jog_joint_command_set_timestamp=time.time()
+		self._jog_joint_velocity=joint_velocity
+
+	def _jog_joint_thread(self):
+		while self._running:
 			with self._lock:
+				if not self._jog_joint_command_set or self.command_mode!=self.robot_consts['RobotCommandMode']['jog']:
+					continue
+				if time.time()-self._jog_joint_command_set_timestamp>0.1:
+					self._jog_joint_command_set=False
+					continue
+			
 				self.Tj.header.stamp = rospy.Time()
 				Tjp = JointTrajectoryPoint()
 				###use current joint position here
-				Tjp.positions = self.joint_position+joint_velocity*(time.time()-self.last_call_time)
-				Tjp.velocities = joint_velocity/2.
+				Tjp.positions = self.joint_position+self._jog_joint_velocity*0.1
+				Tjp.velocities = self._jog_joint_velocity
 				Tjp.time_from_start = rospy.Duration()
 
-				Tjp.time_from_start.nsecs = 1#int((time.time()-self.last_call_time)*1e9)
+				Tjp.time_from_start.nsecs = 10#int((time.time()-self.last_call_time)*1e9)
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
-				# if time.time()+timeout>now:
-				# 	return
-				self.last_cmd=self.last_cmd+joint_velocity*(time.time()-self.last_call_time)
 
-				# print(time.time()-self.last_call_time)
+				time.sleep(0.01)
+
 
 
 	def _position_command_thread(self):
@@ -265,7 +246,7 @@ class Tormach(object):
 	def setf_signal(signal_name, value):
 		#signal_name=<n>, value=1 (True) or 0 (False)
 		pub = rospy.Publisher('/hal_io/digital_out_'+signal_name, Bool, queue_size=1)
-		temp=Bool
+		temp=Bool()
 		temp.data=int(value[0])
 		pub.publish(temp)
 
@@ -280,15 +261,36 @@ class Tormach(object):
 		self._pos_command.daemon = True
 		self._pos_command.start()
 
+		
+		self._jog_command = threading.Thread(target=self._jog_joint_thread)
+		self._jog_command.daemon = True
+		self._jog_command.start()
+
 	def close(self):
 		self._running = False
 		self._pos_command.join()
+		self._jog_command.join()
 
+class create_gripper(object):
+	def __init__(self, tool_info):
+		self.device_info = tool_info.device_info
+		self.tool_info = tool_info
+		self.pub = rospy.Publisher('/hal_io/digital_out_1', Bool, queue_size=1)
+	def open(self):
+		temp=Bool()
+		temp.data=False
+		self.pub.publish(temp)
+	def close(self):
+		temp=Bool()
+		temp.data=True
+		self.pub.publish(temp)
 
 def main():
 
 	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
 	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
+	parser.add_argument("--tool-info-file", type=argparse.FileType('r'),default="tormach_gripper_default_config.yml",required=False,help="Tool info file (required)")
+
 	args, _ = parser.parse_known_args()
 	RRC.RegisterStdRobDefServiceTypes(RRN)
 
@@ -312,17 +314,30 @@ def main():
 	robot_info.chains[0].flange_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
 
 	for j in robot_info.joint_info:
-	    j.passive=False
-	    j.joint_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
+		j.passive=False
+		j.joint_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
 	#########
 
 
 	tormach_inst=Tormach(robot_info)
+
+
+	with args.tool_info_file:
+		tool_info_text = args.tool_info_file.read()
+	info_loader = InfoFileLoader(RRN)
+	tool_info, camera_ident_fd = info_loader.LoadInfoFileFromString(tool_info_text, "com.robotraconteur.robotics.tool.ToolInfo", "tool")
+	
+	attributes_util = AttributesUtil(RRN)
+	tool_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(tool_info.device_info)
+	gripper_inst=create_gripper(tool_info)
+
 	with RR.ServerNodeSetup("tormach_service", 11111) as node_setup:
 
-		service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
-		service_ctx.SetServiceAttributes(robot_attributes)
-
+		robot_service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
+		robot_service_ctx.SetServiceAttributes(robot_attributes)
+		
+		gripper_service_ctx = RRN.RegisterService("tormach_gripper","com.robotraconteur.robotics.tool.Tool",gripper_inst)
+		gripper_service_ctx.SetServiceAttributes(tool_attributes)
 		
 		print('registered')
 		tormach_inst.start()
@@ -331,6 +346,14 @@ def main():
 		# signal.sigwait([signal.SIGTERM,signal.SIGINT])
 		
 		tormach_inst.close()
+
+
+	
+
+	
+
+   
+	
 
 
 if __name__ == "__main__":
