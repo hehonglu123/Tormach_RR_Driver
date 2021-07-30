@@ -137,6 +137,8 @@ class Tormach(object):
 	
 
 	def _joint_callback(self,data):
+		###latency check
+		# print(rospy.get_rostime()-data.header.stamp)
 		self.joint_position=list(data.position)
 		self.robot_state_struct.joint_position=self.joint_position
 		self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
