@@ -10,8 +10,7 @@ from general_robotics_toolbox import *
 from vel_emulate_sub import EmulatedVelocityControl
 from autodiscovery import autodiscover
 
-current_frame_rgb=None
-current_frame_depth=None
+
 new_val=False
 
 
@@ -24,36 +23,26 @@ def ImageToMat(image):
 	frame2=image.data.reshape([image.image_info.height, image.image_info.width, int(len(image.data)/(image.image_info.height*image.image_info.width))], order='C')
 
 	return frame2
+current_frame=None
 
 
-#This function is called when a new pipe packet arrives
-def new_frame_rgb(pipe_ep):
-	global current_frame_rgb, new_val
-	#Loop to get the newest frame
-	while (pipe_ep.Available > 0):
 
-		#Receive the packet
-		image=pipe_ep.ReceivePacket()
-		#Convert the packet to an image and set the global variable
-		current_frame_rgb=ImageToMat(image)
-		new_val=True
-
-		return
-def new_frame_depth(pipe_ep):
-	global current_frame_depth
+def new_frame(pipe_ep):
+	global current_frame, now
+	# print('fps= ', 1/(time.time()-now))
+	now=time.time()
 	#Loop to get the newest frame
 	while (pipe_ep.Available > 0):
 		#Receive the packet
 		
-		depth_data=pipe_ep.ReceivePacket()
+		image=pipe_ep.ReceivePacket()
 		#Convert the packet to an image and set the global variable
-		current_frame_depth=depth_data.data.view(dtype=np.uint16).reshape([depth_data.image_info.height, depth_data.image_info.width], order='C')
+		current_frame=ImageToMat(image)
 
-		return
 
 def move(n, robot_def,vel_ctrl,vd,R):
 	try:
-		w=10
+		w=10000000000000
 		Kq=.01*np.eye(n)    #small value to make sure positive definite
 		KR=np.eye(3)        #gains for position and orientation error
 
@@ -90,36 +79,28 @@ def main():
 	global new_val, p_realsense, R_realsense
 	#Accept the names of the webcams and the nodename from command line
 	parser = argparse.ArgumentParser(description="RR plug and play client")
-	parser.add_argument("--robot-name",type=str,help="Robot name")
+	parser.add_argument("--robot-name",type=str,default='tormach',help="Robot name")
 	args, _ = parser.parse_known_args()
 
 	robot_name=args.robot_name
 	robot_url=autodiscover("com.robotraconteur.robotics.robot.Robot",robot_name)
 	#########read in yaml file for robot client
 
-	url='rr+tcp://localhost:25415?service=Multi_Cam_Service'
-
+	url='rr+tcp://localhost:59823?service=camera'
+	if (len(sys.argv)>=2):
+		url=sys.argv[1]
 
 	#Startup, connect, and pull out the camera from the objref    
-	Multi_Cam_obj=RRN.ConnectService(url)
-
+	c=RRN.ConnectService(url)
 
 	#Connect the pipe FrameStream to get the PipeEndpoint p
-	cam_rgb=Multi_Cam_obj.get_cameras(0)
-	# cam_depth=Multi_Cam_obj.get_cameras(1)
+	p=c.frame_stream.Connect(-1)
 
-
-	p_rgb=cam_rgb.frame_stream.Connect(-1)
-	# p_depth=cam_depth.frame_stream.Connect(-1)
 	#Set the callback for when a new pipe packet is received to the
 	#new_frame function
-	p_rgb.PacketReceivedEvent+=new_frame_rgb
-	# p_depth.PacketReceivedEvent+=new_frame_depth
-
-
+	p.PacketReceivedEvent+=new_frame
 	try:
-		cam_rgb.start_streaming()
-		# cam_depth.start_streaming()
+		c.start_streaming()
 	except: 
 		traceback.print_exc()
 		pass
@@ -160,7 +141,7 @@ def main():
 
 	
 	vel_ctrl = EmulatedVelocityControl(robot,state_w, cmd_w, 0.01)
-	robot.jog_freespace(np.zeros(num_joints),np.ones(num_joints), True)
+	robot.jog_freespace([-5.21293594e-05,  2.71570638e-01,  5.46115274e-01, -9.20868630e-06,  6.40457320e-01, -1.22748139e-04],np.ones(num_joints), True)
 
 
 	robot.command_mode = halt_mode 
@@ -171,30 +152,39 @@ def main():
 
 	while True:
 		#show image
-		if (not current_frame_rgb is None):
-			cv2.imshow("Image",current_frame_rgb)
-			centroid=laser_detection(current_frame_rgb)
+		if (not current_frame is None):
+			cv2.imshow("Image",current_frame)
+			if cv2.waitKey(50)!=-1:
+				break
+			centroid=laser_detection(current_frame)
 			try:
 				centroid[0]
-
 			except:
 				vel_ctrl.set_velocity_command(np.zeros(num_joints))
 				# move(num_joints, robot_def,vel_ctrl,np.zeros(3),R)
+				# traceback.print_exc()
 				continue
-			vd=np.zeros(3)
-			vd[1]=-0.0001*(centroid[0]-640)
-			vd[2]=0.0001*(centroid[1]-360)
-			move(num_joints, robot_def,vel_ctrl,vd,R)
-		if cv2.waitKey(50)!=-1:
-			break
+			####map dot vector to base frame
+			q=state_w.InValue[0].kin_chain_tcp[0]['orientation']
+			R=q2R(q)
 
-			
+			vd=np.zeros(3)
+			vd[1]=-0.0001*(centroid[0]-len(current_frame[0]))
+			vd[2]=0.0001*(centroid[1]-len(current_frame))
+
+			vd_base=np.dot(R,vd)
+			vd_base[-1]=0.
+
+
+			move(num_joints, robot_def,vel_ctrl,vd_base,R)
 		
 
-	p_rgb.Close()
-	p_depth.Close()
-	cam_rgb.stop_streaming()
-	cam_depth.stop_streaming()
+	cv2.destroyAllWindows()
+    
+		
+
+	p.Close()
+	c.stop_streaming()
 
 
 
