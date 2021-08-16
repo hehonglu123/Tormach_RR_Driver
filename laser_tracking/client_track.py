@@ -12,7 +12,13 @@ from autodiscovery import autodiscover
 
 
 new_val=False
-
+def pointInRect(point,rect):
+    x1, y1, x2, y2 = rect
+    x, y = point
+    if (x1 < x and x < x2):
+        if (y1 < y and y < y2):
+            return True
+    return False
 
 def normalize_dq(q):
 	q[:-1]=q[:-1]/(np.linalg.norm(q[:-1])) 
@@ -141,7 +147,7 @@ def main():
 
 	
 	vel_ctrl = EmulatedVelocityControl(robot,state_w, cmd_w, 0.01)
-	robot.jog_freespace([-5.21293594e-05,  2.71570638e-01,  5.46115274e-01, -9.20868630e-06,  6.40457320e-01, -1.22748139e-04],np.ones(num_joints), True)
+	robot.jog_freespace([-5.21293594e-05,  2.71570638e-01,  5.46115274e-01, -9.20868630e-06,  6.40457320e-01, -1.22748139e-04],0.2*np.ones(num_joints), True)
 
 
 	robot.command_mode = halt_mode 
@@ -156,24 +162,34 @@ def main():
 			cv2.imshow("Image",current_frame)
 			if cv2.waitKey(50)!=-1:
 				break
-			centroid=laser_detection(current_frame)
 			try:
-				centroid[0]
+				centroid=laser_detection(current_frame)
+			
+				centroid
+				print(centroid)
 			except:
 				vel_ctrl.set_velocity_command(np.zeros(num_joints))
 				# move(num_joints, robot_def,vel_ctrl,np.zeros(3),R)
-				# traceback.print_exc()
+				traceback.print_exc()
 				continue
 			####map dot vector to base frame
-			q=state_w.InValue[0].kin_chain_tcp[0]['orientation']
+			pose=state_w.InValue.kin_chain_tcp[0]
+			position=list(pose['position'])
+			q=list(pose['orientation'])
 			R=q2R(q)
 
 			vd=np.zeros(3)
-			vd[1]=-0.0001*(centroid[0]-len(current_frame[0]))
-			vd[2]=0.0001*(centroid[1]-len(current_frame))
+			vd[1]=-0.00001*(centroid[0]-len(current_frame[0])/2.)
+			vd[2]=-0.00001*(centroid[1]-len(current_frame)/2.)
 
 			vd_base=np.dot(R,vd)
 			vd_base[-1]=0.
+
+			next_p=np.array(position)+vd_base
+			if not pointInRect(tuple(next_p[:2]),(0.25,-0.35,0.75,0.35)):
+				print('out of boundary')
+				vel_ctrl.set_velocity_command(np.zeros(num_joints))
+				continue
 
 
 			move(num_joints, robot_def,vel_ctrl,vd_base,R)
