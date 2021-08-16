@@ -157,20 +157,18 @@ def main():
 
 
 	while True:
+		now=time.time()
 		#show image
 		if (not current_frame is None):
 			cv2.imshow("Image",current_frame)
 			if cv2.waitKey(50)!=-1:
 				break
 			try:
-				centroid=laser_detection(current_frame)
-			
-				centroid
-				print(centroid)
+				centroid=laser_detection(current_frame)			
 			except:
 				vel_ctrl.set_velocity_command(np.zeros(num_joints))
 				# move(num_joints, robot_def,vel_ctrl,np.zeros(3),R)
-				traceback.print_exc()
+				# traceback.print_exc()
 				continue
 			####map dot vector to base frame
 			pose=state_w.InValue.kin_chain_tcp[0]
@@ -186,13 +184,13 @@ def main():
 			vd_base[-1]=0.
 
 			next_p=np.array(position)+vd_base
-			if not pointInRect(tuple(next_p[:2]),(0.25,-0.35,0.75,0.35)):
-				print('out of boundary')
+			if (not pointInRect(tuple(next_p[:2]),(0.25,-0.35,0.75,0.35))) or np.linalg.norm(vd)<0.00001*20:
 				vel_ctrl.set_velocity_command(np.zeros(num_joints))
 				continue
 
 
 			move(num_joints, robot_def,vel_ctrl,vd_base,R)
+		print(time.time()-now)
 		
 
 	cv2.destroyAllWindows()
