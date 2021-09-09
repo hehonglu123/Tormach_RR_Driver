@@ -112,11 +112,11 @@ class Tormach(object):
 		while self._running:
 			with self._lock:
 				try:
-					self.joint_position=[]
-					self.joint_velocity=[]
+					self.joint_position=np.zeros(self.num_joints)
+					self.joint_velocity=np.zeros(self.num_joints)
 					for i in range(self.num_joints):
-						self.joint_position.append(self.pos_fb[i].get())
-						self.joint_velocity.append(self.vel_fb[i].get())
+						self.joint_position[i]=self.pos_fb[i].get()
+						self.joint_velocity[i]=self.vel_fb[i].get()
 
 					self.robot_state_struct.joint_position=self.joint_position
 					self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
@@ -153,10 +153,10 @@ class Tormach(object):
 					continue
 				
 				for i in range(self.num_joints):
-					self.pos_cmd[i].set(self.joint_position[i]+self._jog_joint_velocity[i]*0.1)
+					self.pos_cmd[i].set(self.joint_position[i]+self._jog_joint_velocity[i]*0.01)
 					self.vel_cmd[i].set(self._jog_joint_velocity[i])
 
-				time.sleep(0.1)
+				time.sleep(0.001)
 
 
 
@@ -179,7 +179,7 @@ class Tormach(object):
 
 						for i in range(self.num_joints):
 							self.pos_cmd[i].set(position_command_wire_packet[1].command[i])
-							self.vel_cmd[i].set(position_command_wire_packet[1].command[i]/0.001)
+							self.vel_cmd[i].set((position_command_wire_packet[1].command[i]-self.joint_position[i])/1)
 
 						time.sleep(0.001)
 
