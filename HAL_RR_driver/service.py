@@ -76,6 +76,7 @@ class Tormach(object):
 			self.vel_cmd=[]
 			self.pos_fb=[]
 			self.vel_fb=[]
+			self.torque=[]
 			for i in range(self.num_joints):
 				self.pos_cmd_pins.append(hal.Pin('hal_hw_interface.joint_'+str(i+1)+'.pos-cmd'))
 				if self.pos_cmd_pins[-1].linked:
@@ -96,6 +97,7 @@ class Tormach(object):
 				self.vel_cmd.append(hal.Signal('joint'+str(i+1)+'_ros_vel_cmd'))
 				self.pos_fb.append(hal.Signal('joint'+str(i+1)+'_ros_pos_fb'))
 				self.vel_fb.append(hal.Signal('joint'+str(i+1)+'_ros_vel_fb'))
+				self.torque_fb.append(hal.Pin('lcec.0.'+str(i)+'.torque-actual-value'))
 		except:
 			traceback.print_exc()
 
@@ -107,6 +109,18 @@ class Tormach(object):
 	def robot_info(self):
 		return self._robot_info
 	
+	def setf_signal(signal_name, value):
+		#signal_name=<n>, value=1 (True) or 0 (False)
+		pin_dout=hal.Pin('lcec.0.6.dout-'+signal_name)
+		pin_dout.set(bool(value))
+
+	def getf_signal(signal_name, value):
+		#signal_name=<n>
+		pin_dout=hal.Pin('lcec.0.6.din-'+signal_name)
+		pin_dout.set(bool(value))
+
+		return np.float64(int(data_in.data))
+
 
 	def _robot_state_update(self):
 		while self._running:
@@ -114,11 +128,15 @@ class Tormach(object):
 				try:
 					self.joint_position=np.zeros(self.num_joints)
 					self.joint_velocity=np.zeros(self.num_joints)
+					self.joint_torque=np.zeros(self.num_joints)
 					for i in range(self.num_joints):
 						self.joint_position[i]=self.pos_fb[i].get()
 						self.joint_velocity[i]=self.vel_fb[i].get()
+						self.joint_torque[i]=self.torque_fb[i].get()
 
 					self.robot_state_struct.joint_position=self.joint_position
+					self.robot_state_struct.joint_velocity=self.joint_velocity
+					self.robot_state_struct.joint_effort=self.joint_torque
 					self.robot_state_struct.ts=np.zeros((1,),dtype=self._date_time_util)
 					#fwdkin calculation
 					self.robot_state_struct.kin_chain_tcp=np.zeros((1,),dtype=self.pose_dtype)
