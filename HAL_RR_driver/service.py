@@ -2,17 +2,21 @@ import numpy as np
 import sh, os, time, copy, sys, threading, signal, traceback, argparse
 from machinekit import hal
 
+# try:
+# 	sh.dpkg_query("-W","python3-robotraconteur")
+# 	from general_robotics_toolbox import *
+# 	import RobotRaconteurCompanion as RRC
+
+# except:
+# 	sh.sudo("apt-get","update")
+# 	sh.sudo("apt-get","install","software-properties-common")
+# 	sh.sudo("apt-add-repository", "ppa:robotraconteur/ppa")
+# 	sh.sudo("apt-get","update")
+# 	sh.sudo("apt-get","install","-y","python3-robotraconteur")
 try:
-	sh.dpkg_query("-W","python3-robotraconteur")
 	from general_robotics_toolbox import *
 	import RobotRaconteurCompanion as RRC
-
 except:
-	sh.sudo("apt-get","update")
-	sh.sudo("apt-get","install","software-properties-common")
-	sh.sudo("apt-add-repository", "ppa:robotraconteur/ppa")
-	sh.sudo("apt-get","update")
-	sh.sudo("apt-get","install","-y","python3-robotraconteur")
 	sh.sudo.pip3.install("general-robotics-toolbox")
 	sh.sudo.pip3.install("RobotRaconteurCompanion")
 
@@ -76,7 +80,7 @@ class Tormach(object):
 			self.vel_cmd=[]
 			self.pos_fb=[]
 			self.vel_fb=[]
-			self.torque=[]
+			self.torque_fb=[]
 			for i in range(self.num_joints):
 				self.pos_cmd_pins.append(hal.Pin('hal_hw_interface.joint_'+str(i+1)+'.pos-cmd'))
 				if self.pos_cmd_pins[-1].linked:
@@ -98,6 +102,7 @@ class Tormach(object):
 				self.pos_fb.append(hal.Signal('joint'+str(i+1)+'_ros_pos_fb'))
 				self.vel_fb.append(hal.Signal('joint'+str(i+1)+'_ros_vel_fb'))
 				self.torque_fb.append(hal.Pin('lcec.0.'+str(i)+'.torque-actual-value'))
+				self.I2tau_conversion=np.array([0.3585,0.239,0.1016,0.03328,0.02592,-0.016])
 		except:
 			traceback.print_exc()
 
@@ -109,12 +114,13 @@ class Tormach(object):
 	def robot_info(self):
 		return self._robot_info
 	
-	def setf_signal(signal_name, value):
+	def setf_signal(self,signal_name, value):
 		#signal_name=<n>, value=1 (True) or 0 (False)
 		pin_dout=hal.Pin('lcec.0.6.dout-'+signal_name)
+		pin_dout.unlink()
 		pin_dout.set(bool(value))
 
-	def getf_signal(signal_name, value):
+	def getf_signal(self,signal_name, value):
 		#signal_name=<n>
 		pin_dout=hal.Pin('lcec.0.6.din-'+signal_name)
 		pin_dout.set(bool(value))
@@ -132,7 +138,7 @@ class Tormach(object):
 					for i in range(self.num_joints):
 						self.joint_position[i]=self.pos_fb[i].get()
 						self.joint_velocity[i]=self.vel_fb[i].get()
-						self.joint_torque[i]=self.torque_fb[i].get()
+						self.joint_torque[i]=self.torque_fb[i].get()*self.I2tau_conversion[i]
 
 					self.robot_state_struct.joint_position=self.joint_position
 					self.robot_state_struct.joint_velocity=self.joint_velocity
@@ -202,11 +208,6 @@ class Tormach(object):
 						time.sleep(0.001)
 
 
-	def setf_signal(signal_name, value):
-		return
-
-	def getf_signal(signal_name):
-		return
 
 	def start(self):
 		self._running=True
@@ -229,11 +230,29 @@ class Tormach(object):
 		self._jog_command.join()
 		self._state_update.join()
 
+class create_gripper(object):
+	def __init__(self, tool_info):
+		self.device_info = tool_info.device_info
+		self.tool_info = tool_info
+		self.dout0=hal.Pin('lcec.0.6.dout-0')
+		self.dout1=hal.Pin('lcec.0.6.dout-1')
+		self.dout0.unlink()
+		self.dout1.unlink()
+
+	def open(self):
+		self.dout0.set(True)
+		self.dout1.set(True)
+	def close(self):
+		self.dout0.set(False)
+		self.dout1.set(False)
+
+
 
 def main():
 
 	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
-	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='../tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
+	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='../config/tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
+	parser.add_argument("--tool-info-file", type=argparse.FileType('r'),default="../config/tormach_gripper_default_config.yml",required=False,help="Tool info file (required)")
 
 	args, _ = parser.parse_known_args()
 	RRC.RegisterStdRobDefServiceTypes(RRN)
@@ -264,11 +283,23 @@ def main():
 	tormach_inst=Tormach(robot_info)
 
 
+	with args.tool_info_file:
+		tool_info_text = args.tool_info_file.read()
+	info_loader = InfoFileLoader(RRN)
+	tool_info, camera_ident_fd = info_loader.LoadInfoFileFromString(tool_info_text, "com.robotraconteur.robotics.tool.ToolInfo", "tool")
+	
+	attributes_util = AttributesUtil(RRN)
+	tool_attributes = attributes_util.GetDefaultServiceAttributesFromDeviceInfo(tool_info.device_info)
+	gripper_inst=create_gripper(tool_info)
+
+
 	with RR.ServerNodeSetup("tormach_service", 11111) as node_setup:
 
 		robot_service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
 		robot_service_ctx.SetServiceAttributes(robot_attributes)
 		
+		gripper_service_ctx = RRN.RegisterService("tormach_gripper","com.robotraconteur.robotics.tool.Tool",gripper_inst)
+		gripper_service_ctx.SetServiceAttributes(tool_attributes)
 
 		print('registered')
 		tormach_inst.start()

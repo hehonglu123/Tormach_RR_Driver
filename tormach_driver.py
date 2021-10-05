@@ -245,14 +245,14 @@ class Tormach(object):
 
 		return traj_gen(self.traj_pub,self.Tj)
 
-	def setf_signal(signal_name, value):
+	def setf_signal(self,signal_name, value):
 		#signal_name=<n>, value=1 (True) or 0 (False)
 		pub = rospy.Publisher('/hal_io/digital_out_'+signal_name, Bool, queue_size=1)
 		temp=Bool()
 		temp.data=int(value[0])
 		pub.publish(temp)
 
-	def getf_signal(signal_name):
+	def getf_signal(self,signal_name):
 		#signal_name=<n>
 		data_in = rospy.wait_for_message('/hal_io/digital_in_'+signal_name, Bool)
 		return np.float64(int(data_in.data))
@@ -290,8 +290,8 @@ class create_gripper(object):
 def main():
 
 	parser = argparse.ArgumentParser(description="Robot Raconteur driver service for Tormach")
-	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
-	parser.add_argument("--tool-info-file", type=argparse.FileType('r'),default="tormach_gripper_default_config.yml",required=False,help="Tool info file (required)")
+	parser.add_argument("--robot-info-file", type=argparse.FileType('r'),default='config/tormach_za06_robot_default_config.yml',required=False,help="Robot info file (required)")
+	parser.add_argument("--tool-info-file", type=argparse.FileType('r'),default="config/tormach_gripper_default_config.yml",required=False,help="Tool info file (required)")
 
 	args, _ = parser.parse_known_args()
 	RRC.RegisterStdRobDefServiceTypes(RRN)
