@@ -7,7 +7,7 @@ from importlib import import_module
 
 ####################Start Service and robot setup
 
-robot_sub=RRN.SubscribeService('rr+tcp://localhost:11111?service=tormach_robot')
+robot_sub=RRN.SubscribeService('rr+tcp://pathpilot:11111?service=tormach_robot')
 robot=robot_sub.GetDefaultClientWait(1)
 
 state_w = robot_sub.SubscribeWire("robot_state")

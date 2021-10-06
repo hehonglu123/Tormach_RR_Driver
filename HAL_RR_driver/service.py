@@ -138,7 +138,10 @@ class Tormach(object):
 					for i in range(self.num_joints):
 						self.joint_position[i]=self.pos_fb[i].get()
 						self.joint_velocity[i]=self.vel_fb[i].get()
-						self.joint_torque[i]=self.torque_fb[i].get()*self.I2tau_conversion[i]
+						try:
+							self.joint_torque[i]=self.torque_fb[i].get()*self.I2tau_conversion[i]
+						except:
+							pass
 
 					self.robot_state_struct.joint_position=self.joint_position
 					self.robot_state_struct.joint_velocity=self.joint_velocity
@@ -234,10 +237,13 @@ class create_gripper(object):
 	def __init__(self, tool_info):
 		self.device_info = tool_info.device_info
 		self.tool_info = tool_info
-		self.dout0=hal.Pin('lcec.0.6.dout-0')
-		self.dout1=hal.Pin('lcec.0.6.dout-1')
-		self.dout0.unlink()
-		self.dout1.unlink()
+		try:
+			self.dout0=hal.Pin('lcec.0.6.dout-0')
+			self.dout1=hal.Pin('lcec.0.6.dout-1')
+			self.dout0.unlink()
+			self.dout1.unlink()
+		except:
+			pass
 
 	def open(self):
 		self.dout0.set(True)
