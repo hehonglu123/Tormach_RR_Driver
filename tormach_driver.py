@@ -124,6 +124,7 @@ class Tormach(object):
 			self.P=np.array(robot_info.chains[0].P.tolist())
 			
 			self.robot_def=Robot(self.H,np.transpose(self.P),np.zeros(self.num_joints))
+			self.pos_cmd_prev=np.zeros(6)
 		except:
 			traceback.print_exc()
 
@@ -187,7 +188,7 @@ class Tormach(object):
 				self.Tj.points = [Tjp]
 				self.traj_pub.publish(self.Tj)
 
-				time.sleep(0.01)
+			time.sleep(0.01)
 
 
 
@@ -202,21 +203,21 @@ class Tormach(object):
 				if self.command_mode==self.robot_consts['RobotCommandMode']['position_command'] and position_command_wire_packet[1].seqno!=self.command_seqno:
 					#update command_seqno
 					self.command_seqno=position_command_wire_packet[1].seqno
-					while np.linalg.norm(position_command_wire_packet[1].command-self.joint_position)>0.001:
-						#break if new value comes in
-						#position command wire InValue tuple?
-						if self.position_command.InValue[0].seqno!=self.command_seqno:
-							break
-						self.Tj.header.stamp = rospy.Time()
-						Tjp = JointTrajectoryPoint()
-						Tjp.positions = position_command_wire_packet[1].command
-						vel = (Tjp.positions - self.joint_position) * self.position_rate.sleep_dur.to_sec()
-						Tjp.velocities = vel
-						Tjp.time_from_start = rospy.Duration()
-						Tjp.time_from_start.nsecs = 1
-						self.Tj.points = [Tjp]
-						self.traj_pub.publish(self.Tj)
-						self.position_rate.sleep()
+					# while np.linalg.norm(position_command_wire_packet[1].command-self.joint_position)>0.001:
+					# 	#break if new value comes in
+					# 	if self.position_command.InValue[0].seqno!=self.command_seqno:
+					# 		break
+					self.Tj.header.stamp = rospy.Time()
+					Tjp = JointTrajectoryPoint()
+					Tjp.positions = position_command_wire_packet[1].command
+					vel = (Tjp.positions - self.pos_cmd_prev) / self.position_rate.sleep_dur.to_sec()
+					Tjp.velocities = vel
+					Tjp.time_from_start = rospy.Duration()
+					Tjp.time_from_start.nsecs = 1
+					self.Tj.points = [Tjp]
+					self.traj_pub.publish(self.Tj)
+					self.pos_cmd_prev=Tjp.positions
+			self.position_rate.sleep()
 
 	def execute_trajectory(self,trajectory):
 		#clear previous waypoints
