@@ -59,6 +59,7 @@ class traj_gen(object):
 
 class Tormach(object):
 	def __init__(self,robot_info):
+
 		try:
 			#TODO: 
 			##turn on robot /hal
@@ -127,8 +128,10 @@ class Tormach(object):
 			self.pos_cmd_prev=np.zeros(6)
 
 			###torque reading
-			torque_sub=RRN.SubscribeService("rr+tcp://pathpilot:12121?service=Torque")
+			torque_sub=RRN.SubscribeService('rr+tcp://pathpilot:12121/?service=Torque')
 			self.torque_state_w = torque_sub.SubscribeWire("torque")
+
+			
 
 
 		except:
@@ -162,8 +165,7 @@ class Tormach(object):
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['z']=quat[3]
 		self.robot_state_struct.command_mode=self.command_mode
 
-		# print(self.torque_state_w.InValue)
-		# self.robot_state_struct.joint_effort=self.torque_state_w.InValue
+		self.robot_state_struct.joint_effort=self.torque_state_w.InValue
 
 		self.robot_state.OutValue=self.robot_state_struct
 
@@ -331,10 +333,6 @@ def main():
 		j.joint_identifier.uuid = np.zeros((1,),dtype=uuid_dtype)
 	#########
 
-
-	tormach_inst=Tormach(robot_info)
-
-
 	with args.tool_info_file:
 		tool_info_text = args.tool_info_file.read()
 	info_loader = InfoFileLoader(RRN)
@@ -346,6 +344,7 @@ def main():
 
 	with RR.ServerNodeSetup("tormach_service", 11111) as node_setup:
 
+		tormach_inst=Tormach(robot_info)
 		robot_service_ctx = RRN.RegisterService("tormach_robot","com.robotraconteur.robotics.robot.Robot",tormach_inst)
 		robot_service_ctx.SetServiceAttributes(robot_attributes)
 		
