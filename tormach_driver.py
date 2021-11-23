@@ -125,6 +125,12 @@ class Tormach(object):
 			
 			self.robot_def=Robot(self.H,np.transpose(self.P),np.zeros(self.num_joints))
 			self.pos_cmd_prev=np.zeros(6)
+
+			###torque reading
+			torque_sub=RRN.SubscribeService("rr+tcp://pathpilot:12121?service=Torque")
+			self.torque_state_w = torque_sub.SubscribeWire("torque")
+
+
 		except:
 			traceback.print_exc()
 
@@ -155,6 +161,10 @@ class Tormach(object):
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['y']=quat[2]
 		self.robot_state_struct.kin_chain_tcp[0]['orientation']['z']=quat[3]
 		self.robot_state_struct.command_mode=self.command_mode
+
+		# print(self.torque_state_w.InValue)
+		# self.robot_state_struct.joint_effort=self.torque_state_w.InValue
+
 		self.robot_state.OutValue=self.robot_state_struct
 
 	def jog_freespace(self,joint_position,max_velocity,wait):
