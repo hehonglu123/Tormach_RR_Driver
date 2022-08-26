@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys, threading, signal, traceback, argparse
+import rospy, time, copy, sys, threading, signal, traceback, argparse, sh
 import numpy as np
 
 try:
