@@ -1,7 +1,22 @@
 #!/usr/bin/env python
 import rospy, time, copy, sys, threading, signal, traceback, argparse
 import numpy as np
-from general_robotics_toolbox import *
+
+try:
+	# sh.dpkg_query("-W","python3-robotraconteur")
+	import RobotRaconteur as RR
+	from general_robotics_toolbox import *
+	import RobotRaconteurCompanion as RRC
+
+except:
+	sh.sudo("apt-get","update")
+	sh.sudo("apt-get","install","software-properties-common")
+	sh.sudo("apt-add-repository", "ppa:robotraconteur/ppa")
+	sh.sudo("apt-get","update")
+	sh.sudo("apt-get","install","-y","python3-robotraconteur")
+	sh.sudo.pip3.install("general-robotics-toolbox")
+	sh.sudo.pip3.install("RobotRaconteurCompanion")
+
 
 #ROS libs
 from sensor_msgs.msg import JointState
