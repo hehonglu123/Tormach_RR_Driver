@@ -41,6 +41,19 @@ Make sure rostopics/services are visible after the settings.
 python tormach_driver.py --robot-info-file=tormach_za06_robot_default_config.yml
 ```
 
+
+### Running inside Docker 
+```
+sudo apt-get update
+sudo apt-get install software-properties-common
+sudo apt-add-repository ppa:robotraconteur/ppa
+sudo apt-get update
+
+pip install general-robotics-toolbox
+pip install RobotRaconteurCompanion
+
+```
+
 ### Running RR client
 * Jog joint position & Position command example
 ```
