@@ -5,6 +5,7 @@ import numpy as np
 try:
 	import RobotRaconteur as RR
 except:
+	print('installing dependencies')
 	sh.sudo("apt-get","update")
 	sh.sudo("apt-get","install","software-properties-common")
 	sh.sudo("apt-add-repository", "ppa:robotraconteur/ppa")
