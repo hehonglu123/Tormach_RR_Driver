@@ -3,7 +3,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-c = RRN.ConnectService('rr+tcp://localhost:11111?service=tormach_robot')
+c = RRN.ConnectService('rr+tcp://ros-dist-ui:11111?service=tormach_robot')
 
 cmd_w = c.position_command.Connect()
 state_w = c.robot_state.Connect()
@@ -39,7 +39,7 @@ waypoints = []
 for i in range(10000):
 	t=float(i/1000.)
 	wp = JointTrajectoryWaypoint()
-	wp.joint_position = [np.sin(t),0,0,0,0,0]
+	wp.joint_position = [np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.]
 	wp.time_from_start = t
 	waypoints.append(wp)
 

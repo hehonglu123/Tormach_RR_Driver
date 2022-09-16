@@ -1,23 +1,47 @@
 #!/usr/bin/env python
-import rospy, time, copy, sys, threading, signal, traceback, argparse
+import rospy, time, copy, sys, threading, signal, traceback, argparse, sh
 import numpy as np
-from general_robotics_toolbox import *
+
+try:
+	import RobotRaconteur as RR
+except:
+	print('installing dependencies')
+	sh.sudo("apt-get","update")
+	sh.sudo("apt-get","install","software-properties-common")
+	sh.sudo("apt-add-repository", "ppa:robotraconteur/ppa")
+	sh.sudo("apt-get","update")
+	sh.sudo("apt-get","install","-y","python3-robotraconteur")
+	import RobotRaconteur as RR
+
+try:
+	from general_robotics_toolbox import *
+except:
+	sh.sudo.pip3.install("general-robotics-toolbox")
+	from general_robotics_toolbox import *
+
+try:
+	import RobotRaconteurCompanion as RRC
+except:	
+	sh.sudo.pip3.install("RobotRaconteurCompanion")
+	import RobotRaconteurCompanion as RRC
+
+
 
 #ROS libs
 from sensor_msgs.msg import JointState
 from robot_jog_msgs.srv import *
 from robot_jog_msgs.msg import *
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from control_msgs.msg import JointTrajectoryControllerState
+from control_msgs.msg import JointTrajectoryControllerState, JointJog
 from std_msgs.msg import Bool
-#RR libs
-import RobotRaconteur as RR
+
+##RR libs
 RRN=RR.RobotRaconteurNode.s
-import RobotRaconteurCompanion as RRC
+from RobotRaconteur.RobotRaconteurPythonError import StopIterationException
 from RobotRaconteurCompanion.Util.InfoFileLoader import InfoFileLoader
 from RobotRaconteurCompanion.Util.DateTimeUtil import DateTimeUtil
 from RobotRaconteurCompanion.Util.AttributesUtil import AttributesUtil
-from RobotRaconteur.RobotRaconteurPythonError import StopIterationException
+
 
 
 class traj_gen(object):
