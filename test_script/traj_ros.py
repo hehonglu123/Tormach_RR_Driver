@@ -69,7 +69,7 @@ def main():
 		Tjp.time_from_start = rospy.Duration()
 		Tjp.time_from_start.secs=int(t)
 		Tjp.time_from_start.nsecs = int((t % 1)*1e9)
-		Tj.points = [Tjp]
+		Tj.points.append(Tjp)
 
 	pub_t.publish(Tj)
 
