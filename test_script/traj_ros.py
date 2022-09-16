@@ -55,16 +55,19 @@ def main():
 
 
 	#traj sin
+	dt=0.001
 	Tj = JointTrajectory()
 	Tj.joint_names = ['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6',]
 	rate = rospy.Rate(500)  # 10hz
 	now = time.time()
 	for i in range(10000):
-		t=float(i/1000.)
+		t=float(i*dt)
 		Tj.header.stamp = rospy.Time()
 		Tjp = JointTrajectoryPoint()
-		Tjp.positions = [np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.,np.sin(t)/4.]
-		# vel = (Tjp.positions[5] - last_pos) / 1000.
+		p=np.sin(t)/4.
+		v=(np.sin(t)/4.-np.sin(float(i-1)*dt)/4.)/dt
+		Tjp.positions = [p]*6
+		Tjp.velocities = [v]*6
 
 		Tjp.time_from_start = rospy.Duration()
 		Tjp.time_from_start.secs=int(t)
