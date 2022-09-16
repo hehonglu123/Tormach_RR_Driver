@@ -13,46 +13,21 @@ Robot Raconteur is an object oriented robot communication library. This driver u
 ## Instructions:
 
 ![Setup](images/Hardware_setup.jpg)
-### Running RR driver
-In order to start Robot Raconteur driver, 
-* Build custom ROS messages in a separate ROS workspace (one-time only), and source it
-```
-  source ~/tormach_ws/devel/setup.bash
-```
+### Running RR driver on Tormach Computer
 * Start Pathpilot and Docker running on Tormach control computer
 
-Double click `PathPilot` application, then
+Double click `PathPilot` application, load selected version, then
 ```
 docker exec -it ros-None-ui bash
 source /opt/ros/noetic/setup.bash
 ```
-* Set up ROS communication protocol on RR driver PC
+Inside docker terminal, run
 ```
-sudo nano /etc/hosts
+cd Desktop/Tormach_RR_Driver/
+python tormach_driver2.py
 ```
-Add `ros-None-ui` and the IP of Tormach computer in the host book. Then in the terminal
-```
-  export $ROS_MASTER_URI=http://ros-None-ui:11311/
-  export $ROS_IP=<IP of PC>
-```
-Make sure rostopics/services are visible after the settings.
-* Start RR driver
-```
-python tormach_driver.py --robot-info-file=tormach_za06_robot_default_config.yml
-```
+Everytime a new docker terminal is started, dependencies will be installed (~1min).
 
-
-### Running inside Docker 
-```
-sudo apt-get update
-sudo apt-get install software-properties-common
-sudo apt-add-repository ppa:robotraconteur/ppa
-sudo apt-get update
-
-pip install general-robotics-toolbox
-pip install RobotRaconteurCompanion
-
-```
 
 ### Running RR client
 * Jog joint position & Position command example
@@ -68,7 +43,3 @@ python tormach_client1.py
 ![Detailed Interface Info](images/ROS_RR_bridge.jpg)
 
 
-## TODO:
-* Dockerize
-* Add DIO support (tests needed)
-* Laser Tracking Example
