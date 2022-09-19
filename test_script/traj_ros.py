@@ -47,7 +47,7 @@ def main():
 	time.sleep(1)
 	pub = rospy.Publisher('/jog/execute', JogExecute, queue_size=1)
 	rate = rospy.Rate(10) # 10hz
-	#jog to 0
+	#jog to 0 config
 	while np.linalg.norm(joint_positions[-1])>0.001:
 		pub.publish(JE)
 		rtval=srv(joint_names,[0.]*6)
