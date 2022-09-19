@@ -14,11 +14,21 @@ Robot Raconteur is an object oriented robot communication library. This driver u
 
 ![Setup](images/Hardware_setup.jpg)
 ### Running RR driver on Tormach Computer
-* Start Pathpilot and Docker running on Tormach control computer
-
-Double click `PathPilot` application, load selected version, then
+* (**Standard**) Start Pathpilot and Docker running on Tormach control computer by double click `PathPilot` application, load selected version, then
 ```
 docker exec -it ros-None-ui bash
+```
+* (**Temp**) Start Pathpilot by:
+```
+launch-pathpilot-launcher -t docker.pathpilot.com/ros_public:noetic-dist-focal-172.7a5bb919
+```
+* (**Temp**) Launch Docker:
+```
+docker exec -it ros-dist-ui bash
+```
+
+* Source ROS directory
+```
 source /opt/ros/noetic/setup.bash
 ```
 Inside docker terminal, run
